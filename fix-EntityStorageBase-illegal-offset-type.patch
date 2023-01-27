@@ -1,0 +1,14 @@
+diff -ruN a/core/lib/Drupal/Core/Entity/EntityStorageBase.php b/core/lib/Drupal/Core/Entity/EntityStorageBase.php
+--- a/core/lib/Drupal/Core/Entity/EntityStorageBase.php	2023-01-18 19:22:54.000000000 +0100
++++ b/core/lib/Drupal/Core/Entity/EntityStorageBase.php	2023-01-27 15:51:09.000000000 +0100
+@@ -292,6 +292,10 @@
+    * {@inheritdoc}
+    */
+   public function load($id) {
++    if(is_array($id)) {
++      return NULL;
++    }
++
+     assert(!is_null($id), sprintf('Cannot load the "%s" entity with NULL ID.', $this->entityTypeId));
+     $entities = $this->loadMultiple([$id]);
+     return $entities[$id] ?? NULL;
