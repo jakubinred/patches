@@ -1,0 +1,15 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff -ruN a/frontback/frontback.module b/frontback/frontback.module
+--- a/frontback/frontback.module	2021-07-30 14:15:42.000000000 +0200
++++ b/frontback/frontback.module	2023-02-09 21:42:00.000000000 +0100
+@@ -72,6 +72,10 @@
+  */
+ function _frontback_page_match($pages) {
+   // Logic from core RequestPath condition plugin.
++  if(isset($pages)) {
++    $pages = mb_strtolower($pages);
++  }
++
+   $pages = mb_strtolower($pages);
+   if (!$pages) {
+     return FALSE;
