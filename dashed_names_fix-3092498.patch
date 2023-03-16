@@ -1,0 +1,40 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff -ruN a/views_taxonomy_term_name_into_id/src/Plugin/views/argument_validator/TermNameAsId.php b/views_taxonomy_term_name_into_id/src/Plugin/views/argument_validator/TermNameAsId.php
+--- a/views_taxonomy_term_name_into_id/src/Plugin/views/argument_validator/TermNameAsId.php	2023-03-14 03:18:41.000000000 +0100
++++ b/views_taxonomy_term_name_into_id/src/Plugin/views/argument_validator/TermNameAsId.php	2023-03-16 19:17:53.000000000 +0100
+@@ -19,20 +19,27 @@
+    * {@inheritdoc}
+    */
+   public function validateArgument($argument) {
+-    if ($this->options['transform']) {
+-      $argument = str_replace('-', ' ', (string)$argument);
+-    }
++    $query = $this->termStorage->getQuery();
+ 
+     // If bundles is set then restrict the loaded terms to the given bundles.
+     if (!empty($this->options['bundles'])) {
+-      $terms = $this->termStorage->loadByProperties([
+-        'name' => $argument,
+-        'vid' => $this->options['bundles'],
+-      ]);
++      $query->condition('vid', $this->options['bundles'], 'IN');
++    }
++    
++    if ($this->options['transform']) {
++      // If you have a term "co-worker", no matches will be found when the dash
++      // will be removed. Try to load both terms with spaces and terms with
++      // dashes if any exist.
++      $argument = preg_quote(html_entity_decode($argument));
++      $argument_pattern = '^' . str_replace('\-', '[- ]', $argument) . '$';
++      $query->condition('name', $argument_pattern, 'REGEXP');
+     }
+     else {
+-      $terms = $this->termStorage->loadByProperties(['name' => $argument]);
++      $query->condition('name', $argument);
+     }
++       
++    $terms_ids = $query->execute();
++    $terms = $terms_ids ? $this->termStorage->loadMultiple($terms_ids) : [];
+ 
+     // $terms are already bundle tested but we need to test access control.
+     foreach ($terms as $term) {
