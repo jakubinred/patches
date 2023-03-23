@@ -1,0 +1,13 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff -ruN a/field_states_ui/src/FieldStateManager.php b/field_states_ui/src/FieldStateManager.php
+--- a/field_states_ui/src/FieldStateManager.php	2020-11-27 19:41:43.000000000 +0100
++++ b/field_states_ui/src/FieldStateManager.php	2023-03-23 19:34:14.000000000 +0100
+@@ -157,7 +157,7 @@
+       case 'boolean':
+         switch ($plugin_id) {
+           case 'options_buttons':
+-            $target = &$element[0];
++            $target = &$element;
+             break;
+ 
+           case 'boolean_checkbox':
