@@ -1,8 +1,7 @@
 Binary files a/.DS_Store and b/.DS_Store differ
-Binary files a/single_content_sync/.DS_Store and b/single_content_sync/.DS_Store differ
-diff -ruN a/single_content_sync/drush.services.yml b/single_content_sync/drush.services.yml
---- a/single_content_sync/drush.services.yml	1970-01-01 01:00:00.000000000 +0100
-+++ b/single_content_sync/drush.services.yml	2023-05-05 18:33:05.000000000 +0200
+diff -ruN a/drush.services.yml b/drush.services.yml
+--- a/drush.services.yml	1970-01-01 01:00:00.000000000 +0100
++++ b/drush.services.yml	2023-05-05 18:33:05.000000000 +0200
 @@ -0,0 +1,14 @@
 +services:
 +    single_content_sync.commands:
@@ -18,10 +17,10 @@ diff -ruN a/single_content_sync/drush.services.yml b/single_content_sync/drush.s
 +            - "@file_system"
 +        tags:
 +            - { name: drush.command }
-Binary files a/single_content_sync/src/.DS_Store and b/single_content_sync/src/.DS_Store differ
-diff -ruN a/single_content_sync/src/Commands/ContentSyncCommands.php b/single_content_sync/src/Commands/ContentSyncCommands.php
---- a/single_content_sync/src/Commands/ContentSyncCommands.php	1970-01-01 01:00:00.000000000 +0100
-+++ b/single_content_sync/src/Commands/ContentSyncCommands.php	2023-05-05 18:30:19.000000000 +0200
+Binary files a/src/.DS_Store and b/src/.DS_Store differ
+diff -ruN a/src/Commands/ContentSyncCommands.php b/src/Commands/ContentSyncCommands.php
+--- a/src/Commands/ContentSyncCommands.php	1970-01-01 01:00:00.000000000 +0100
++++ b/src/Commands/ContentSyncCommands.php	2023-05-05 18:30:19.000000000 +0200
 @@ -0,0 +1,366 @@
 +<?php
 +namespace Drupal\single_content_sync\Commands;
