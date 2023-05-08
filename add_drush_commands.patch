@@ -1,7 +1,8 @@
-Binary files a/.DS_Store and b/.DS_Store differ
-diff -ruN a/drush.services.yml b/drush.services.yml
---- a/drush.services.yml	1970-01-01 01:00:00.000000000 +0100
-+++ b/drush.services.yml	2023-05-05 18:33:05.000000000 +0200
+diff --git a/drush.services.yml b/drush.services.yml
+new file mode 100644
+index 0000000..6ab99c9
+--- /dev/null
++++ b/drush.services.yml
 @@ -0,0 +1,14 @@
 +services:
 +    single_content_sync.commands:
@@ -17,10 +18,11 @@ diff -ruN a/drush.services.yml b/drush.services.yml
 +            - "@file_system"
 +        tags:
 +            - { name: drush.command }
-Binary files a/src/.DS_Store and b/src/.DS_Store differ
-diff -ruN a/src/Commands/ContentSyncCommands.php b/src/Commands/ContentSyncCommands.php
---- a/src/Commands/ContentSyncCommands.php	1970-01-01 01:00:00.000000000 +0100
-+++ b/src/Commands/ContentSyncCommands.php	2023-05-05 18:30:19.000000000 +0200
+diff --git a/src/Commands/ContentSyncCommands.php b/src/Commands/ContentSyncCommands.php
+new file mode 100644
+index 0000000..37fc154
+--- /dev/null
++++ b/src/Commands/ContentSyncCommands.php
 @@ -0,0 +1,366 @@
 +<?php
 +namespace Drupal\single_content_sync\Commands;
@@ -388,3 +390,116 @@ diff -ruN a/src/Commands/ContentSyncCommands.php b/src/Commands/ContentSyncComma
 +    return $grandparent_path;
 +  }
 +}
+diff --git a/src/ContentSyncHelper.php b/src/ContentSyncHelper.php
+index 9039e1f..755c1d5 100644
+--- a/src/ContentSyncHelper.php
++++ b/src/ContentSyncHelper.php
+@@ -260,4 +260,19 @@ class ContentSyncHelper implements ContentSyncHelperInterface {
+     return $this->configFactory->get('system.site')->get('uuid');
+   }
+ 
++  /**
++   * {@inheritdoc}
++   */
++  public function containsDisallowedEntities(array $entities): bool {
++    $allowed_entity_types = $this->configFactory->get('single_content_sync.settings')->get('allowed_entity_types');
++      foreach ($entities as $entity) {
++          $entity_type_id = $entity->getEntityTypeId();
++      if (!isset($allowed_entity_types[$entity_type_id]) || ($allowed_entity_types[$entity_type_id] && !isset($allowed_entity_types[$entity_type_id][$entity->bundle()]))) {
++          return TRUE;
++        }
++      }
++      return FALSE;
++  
++  }
++
+ }
+diff --git a/src/ContentSyncHelperInterface.php b/src/ContentSyncHelperInterface.php
+index a73dc0b..d97f657 100644
+--- a/src/ContentSyncHelperInterface.php
++++ b/src/ContentSyncHelperInterface.php
+@@ -135,4 +135,13 @@ interface ContentSyncHelperInterface {
+    */
+   public function getSiteUuid(): string;
+ 
++  /**
++   * Returns TRUE if the provided entities contain disallowed entities.
++   * 
++   *  @return bool
++   *  Returns TRUE  if the provided entities contain disallowed entities,
++   *  else returns FALSE.
++   */
++  public function containsDisallowedEntities(array $entities): bool;
++
+ }
+diff --git a/src/Form/ContentBulkExportForm.php b/src/Form/ContentBulkExportForm.php
+index b1da55d..a9c0730 100644
+--- a/src/Form/ContentBulkExportForm.php
++++ b/src/Form/ContentBulkExportForm.php
+@@ -11,6 +11,7 @@ use Drupal\Core\TempStore\PrivateTempStore;
+ use Drupal\Core\TempStore\PrivateTempStoreFactory;
+ use Drupal\Core\Url;
+ use Drupal\single_content_sync\ContentFileGeneratorInterface;
++use Drupal\single_content_sync\ContentSyncHelperInterface;
+ use Symfony\Component\DependencyInjection\ContainerInterface;
+ 
+ /**
+@@ -34,6 +35,13 @@ class ContentBulkExportForm extends ConfirmFormBase {
+    */
+   protected ContentFileGeneratorInterface $fileGenerator;
+ 
++  /**
++   * The content sync helper.
++   * 
++   * @var \Drupal\single_content_sync\ContentSyncHelperInterface
++   */
++  protected $contentSyncHelper;
++
+   /**
+    * Construct of ContentBulkExportForm.
+    *
+@@ -44,10 +52,11 @@ class ContentBulkExportForm extends ConfirmFormBase {
+    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+    *   The config factory.
+    */
+-  public function __construct(PrivateTempStoreFactory $temp_store_factory, ContentFileGeneratorInterface $file_generator, ConfigFactoryInterface $config_factory) {
++  public function __construct(PrivateTempStoreFactory $temp_store_factory, ContentFileGeneratorInterface $file_generator, ConfigFactoryInterface $config_factory, ContentSyncHelperInterface $content_sync_helper) {
+     $this->privateTempStore = $temp_store_factory->get('single_content_sync');
+     $this->fileGenerator = $file_generator;
+     $this->configFactory = $config_factory;
++    $this->contentSyncHelper = $content_sync_helper;
+   }
+ 
+   /**
+@@ -57,7 +66,8 @@ class ContentBulkExportForm extends ConfirmFormBase {
+     return new static(
+       $container->get('tempstore.private'),
+       $container->get('single_content_sync.file_generator'),
+-      $container->get('config.factory')
++      $container->get('config.factory'),
++      $container->get('single_content_sync.content_sync_helper')
+     );
+   }
+ 
+@@ -144,19 +154,8 @@ class ContentBulkExportForm extends ConfirmFormBase {
+     $this->privateTempStore->delete($this->currentUser()->id());
+ 
+     if ($form_state->getValue('confirm')) {
+-      $allowed_entity_types = $this->configFactory->get('single_content_sync.settings')->get('allowed_entity_types');
+-
+-      // Fill an array with entity types to be exported.
+-      $disallowed = FALSE;
+-      foreach ($entities as $entity) {
+-        $entity_type_id = $entity->getEntityTypeId();
+-        if (!isset($allowed_entity_types[$entity_type_id]) || ($allowed_entity_types[$entity_type_id] && !isset($allowed_entity_types[$entity_type_id][$entity->bundle()]))) {
+-          $disallowed = TRUE;
+-          break;
+-        }
+-      }
+-      // If not all entity types to be exported are part of
+-      // $allowed_entity_types, abort the export operation.
++      $disallowed = $this->contentSyncHelper->containsDisallowedEntities($entities);
++      
+       if ($disallowed) {
+         $this->messenger()->addError($this->t("The export couldn't be completed since it contains disallowed content. Please check the configuration of the Single Content Sync module, or select only allowed content."));
+         $form_state->setRedirect('system.admin_content');
