@@ -1,0 +1,13 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff -ruN a/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php b/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php
+--- a/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php	2022-11-22 21:36:08.000000000 +0100
++++ b/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php	2023-05-17 15:31:16.000000000 +0200
+@@ -284,6 +284,8 @@
+       }
+     }
+ 
++    $query->accessCheck(true);
++
+     return $query;
+   }
+ 
