@@ -1,0 +1,11 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff -ruN a/frontback.info.yml b/frontback.info.yml
+--- a/frontback.info.yml	2023-05-23 18:52:33.000000000 +0200
++++ b/frontback.info.yml	2023-05-23 18:55:46.000000000 +0200
+@@ -2,5 +2,5 @@
+ description: Integrates Frontback feedback widget with Drupal.
+ type: module
+ core: 8.x
+-core_version_requirement: ^8 || ^9
++core_version_requirement: ^8 || ^9 || ^10
+ configure: frontback.admin_settings
