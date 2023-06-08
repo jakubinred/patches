@@ -1,0 +1,13 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff -ruN a/entity_embed.info.yml b/entity_embed.info.yml
+--- a/entity_embed.info.yml	2022-10-20 16:19:04.000000000 +0200
++++ b/entity_embed.info.yml	2023-06-08 22:15:27.000000000 +0200
+@@ -1,7 +1,7 @@
+ name: Entity Embed
+ type: module
+ description: 'Allows entities to be embedded using a text editor.'
+-core_version_requirement: ^9.3
++core_version_requirement: ^9.3 || ^10
+ package: Filters
+ dependencies:
+   - drupal:editor
