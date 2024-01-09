@@ -1,21 +1,13 @@
 Binary files a/.DS_Store and b/.DS_Store differ
-diff --color -crB a/src/Plugin/views/filter/CshsTaxonomyIndex.php b/src/Plugin/views/filter/CshsTaxonomyIndex.php
-*** a/src/Plugin/views/filter/CshsTaxonomyIndex.php	Mon Jan  8 23:21:48 2024
---- b/src/Plugin/views/filter/CshsTaxonomyIndex.php	Tue Jan  9 21:06:28 2024
-***************
-*** 127,133 ****
-     * {@inheritdoc}
-     */
-    public function getVocabulariesIds(): array {
-!     return [$this->options['vid']];
-    }
-  
-    /**
---- 127,133 ----
-     * {@inheritdoc}
-     */
-    public function getVocabulariesIds(): array {
-!     return !empty($this->options['vids']) ? $this->options['vids'] : [$this->options['vid']];
-    }
-  
-    /**
+diff --color -ruN a/src/Plugin/views/filter/CshsTaxonomyIndex.php b/src/Plugin/views/filter/CshsTaxonomyIndex.php
+--- a/src/Plugin/views/filter/CshsTaxonomyIndex.php	2024-01-08 23:21:48
++++ b/src/Plugin/views/filter/CshsTaxonomyIndex.php	2024-01-09 21:06:28
+@@ -127,7 +127,7 @@
+    * {@inheritdoc}
+    */
+   public function getVocabulariesIds(): array {
+-    return [$this->options['vid']];
++    return !empty($this->options['vids']) ? $this->options['vids'] : [$this->options['vid']];
+   }
+ 
+   /**
