@@ -1,13 +1,20 @@
 Binary files a/.DS_Store and b/.DS_Store differ
-diff -ruN a/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php b/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php
---- a/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php	2022-11-22 21:36:08.000000000 +0100
-+++ b/src/Plugin/EntityReferenceSelection/EmbederatorSelection.php	2023-05-17 15:31:16.000000000 +0200
-@@ -284,6 +284,8 @@
-       }
-     }
- 
-+    $query->accessCheck(true);
-+
-     return $query;
-   }
- 
+diff --color -ruN a/src/Form/EmbederatorTypeDeleteForm.php b/src/Form/EmbederatorTypeDeleteForm.php
+--- a/src/Form/EmbederatorTypeDeleteForm.php	2023-11-01 01:25:36
++++ b/src/Form/EmbederatorTypeDeleteForm.php	2024-02-01 22:28:32
+@@ -21,6 +21,7 @@
+       ->getStorage('embederator')
+       ->getQuery()
+       ->condition('type', $this->entity->id())
++      ->accessCheck(TRUE)
+       ->count()
+       ->execute();
+     return $this->t('Are you sure you want to delete entity type %name? This will delete %count entities of this type.', [
+@@ -57,6 +58,7 @@
+     $count = $storage
+       ->getQuery()
+       ->condition('type', $this->entity->id())
++      ->accessCheck(TRUE)
+       ->count()
+       ->execute();
+     
