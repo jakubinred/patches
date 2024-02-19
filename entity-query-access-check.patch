@@ -1,0 +1,12 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --color -ruN a/src/RedirectListBuilder.php b/src/RedirectListBuilder.php
+--- a/src/RedirectListBuilder.php	2024-02-19 15:59:44
++++ b/src/RedirectListBuilder.php	2024-02-19 16:14:38
+@@ -84,6 +84,7 @@
+     $form_id = \Drupal::request()->get('form_id');
+ 
+     $query = $this->getStorage()->getQuery();
++    $query->accessCheck(FALSE);
+ 
+     if ($form_id && $form_id === 'redirect_list_exposed_form') {
+       $text = \Drupal::request()->get('text');
