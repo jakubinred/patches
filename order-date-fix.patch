@@ -1,0 +1,11 @@
+diff --color -ruN a/src/Plugin/Action/ChangeOrderStatus.php b/src/Plugin/Action/ChangeOrderStatus.php
+--- a/src/Plugin/Action/ChangeOrderStatus.php	2022-04-15 14:48:33
++++ b/src/Plugin/Action/ChangeOrderStatus.php	2024-06-18 22:08:06
+@@ -74,6 +74,7 @@
+   public function execute($entity = NULL) {
+     if (!empty($this->configuration['order_state'])) {
+       $entity->set('state', $this->configuration['order_state']);
++      $entity->set('completed', $entity->get('created')->value);
+       $entity->save();
+     }
+   }
