@@ -1,0 +1,22 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --color -ruN a/js/update-slots.js b/js/update-slots.js
+--- a/js/update-slots.js	2023-11-01 23:26:52
++++ b/js/update-slots.js	2024-07-10 17:37:24
+@@ -38,8 +38,16 @@
+         const $loading = $('<img class="vaa-loading" src="' + settings.path.baseUrl + settings.viewfield_argument_helper.path + '/images/loading.gif">');
+         $loading.hide();
+         $slot.append($loading);
++        
++        let loop = setInterval(function () {
++          let display_id = $parent.find('select[name$="[display_id]"]').val();
++          
++          if(display_id) {
++            clearInterval(loop);
++            updateSlots($parent, $slot);
++          }
+ 
+-        updateSlots($parent, $slot);
++        }, 500);
+ 
+         $parent.find('select').on('change', function(e) {
+           updateSlots($parent, $slot);
