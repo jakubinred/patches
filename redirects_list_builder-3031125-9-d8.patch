@@ -226,7 +226,7 @@ diff --color -ruN a/src/Form/RedirectListExposedForm.php b/src/Form/RedirectList
 +}
 diff --color -ruN a/src/RedirectListBuilder.php b/src/RedirectListBuilder.php
 --- a/src/RedirectListBuilder.php	1970-01-01 01:00:00
-+++ b/src/RedirectListBuilder.php	2024-08-22 18:50:30
++++ b/src/RedirectListBuilder.php	2024-08-22 22:38:45
 @@ -0,0 +1,105 @@
 +<?php
 +
@@ -313,7 +313,7 @@ diff --color -ruN a/src/RedirectListBuilder.php b/src/RedirectListBuilder.php
 +    $header = $this->buildHeader();
 +    $form_id = \Drupal::request()->get('form_id');
 +
-+    $query = $this->getStorage()->getQuery();
++    $query = $this->getStorage()->getQuery()->accessCheck(TRUE);
 +
 +    if ($form_id && $form_id === 'redirect_list_exposed_form') {
 +      $text = \Drupal::request()->get('text');
