@@ -1,0 +1,16 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+Binary files a/src/.DS_Store and b/src/.DS_Store differ
+Binary files a/src/Plugin/.DS_Store and b/src/Plugin/.DS_Store differ
+Binary files a/src/Plugin/Field/.DS_Store and b/src/Plugin/Field/.DS_Store differ
+diff --color -ruN a/src/Plugin/Field/FieldFormatter/ViewfieldFormatterDefault.php b/src/Plugin/Field/FieldFormatter/ViewfieldFormatterDefault.php
+--- a/src/Plugin/Field/FieldFormatter/ViewfieldFormatterDefault.php	2024-07-09 20:29:29
++++ b/src/Plugin/Field/FieldFormatter/ViewfieldFormatterDefault.php	2024-07-18 19:04:28
+@@ -163,6 +163,8 @@
+           $view->setItemsPerPage($items_to_display);
+         }
+ 
++        $view->element['#host_entity'] = $entity;
++
+         $view->preExecute();
+         $view->execute();
+ 
