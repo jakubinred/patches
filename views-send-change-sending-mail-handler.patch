@@ -1,0 +1,64 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --color -ruN a/views_send.module b/views_send.module
+--- a/views_send.module	2022-12-16 13:58:39
++++ b/views_send.module	2024-09-27 20:05:11
+@@ -52,7 +52,7 @@
+   case \Drupal::moduleHandler()->moduleExists('mandrill'):
+   case \Drupal::moduleHandler()->moduleExists('mimemail'):
+   case \Drupal::moduleHandler()->moduleExists('sendgrid_integration'):
+-  case \Drupal::moduleHandler()->moduleExists('swiftmailer'):
++  case \Drupal::moduleHandler()->moduleExists('symfony_mailer'):
+     define('VIEWS_SEND_MIMEMAIL', TRUE);
+     break;
+ 
+@@ -824,10 +824,10 @@
+ 
+   // Updating message with data from generated mail
+   $message['to_mail'] = $mail['to'];
+-  $message['from_mail'] = $mail['from'];
+-  $message['subject'] = $mail['subject'];
+-  $message['body'] = $mail['body'];
+-  $message['headers'] = serialize($mail['headers']);
++  $message['from_mail'] = $mail['params']['from_mail'];
++  $message['subject'] = $mail['params']['subject'];
++  $message['body'] = $mail['params']['body'];
++  $message['headers'] = serialize($mail['params']['headers']);
+ 
+   // Preserving attachments because Swift Mailer and Mandrill doesn't
+   // handle attachments in the format function.
+@@ -861,22 +861,22 @@
+   $key = 'direct';
+   $headers = unserialize($message->headers);
+ 
+-  $mail = array(
+-    'to' => $message->to_mail,
+-    'from' => $message->from_mail,
+-    'subject' => $message->subject,
+-    'body' => $message->body,
+-    'headers' => $headers,
+-  );
++  $langcode = \Drupal::currentUser()->getPreferredLangcode();
++  $system = \Drupal::service('plugin.manager.mail');
+ 
+-  // Adding attachments explicitly because Swift Mailer and Mandrill doesn't
+-  // handle attachments in the format function. Only works for batch delivery of mail.
+-  if (!empty($message->params) && (\Drupal::moduleHandler()->moduleExists('swiftmailer') || \Drupal::moduleHandler()->moduleExists('mandrill'))) {
+-    $mail['params'] = $message->params;
++  if(VIEWS_SEND_MIMEMAIL) {
++    $headers['Content-Type'] = 'text/html; charset=UTF-8';
++    $headers['MIME-Version'] = '1.0';
+   }
+ 
+-  $system =  $mail_backend = \Drupal::service('plugin.manager.mail')->getInstance(array('module' => 'views_send', 'key' => $key));
+-  return $system->mail($mail);
++  $params = [];
++  $params['subject'] = $message->subject;
++  $params['body'] = $message->body;
++  $params['headers'] = $headers;
++
++  $result = $system->mail('views_send', $key, $message->to_mail, $langcode, $params, $message->from_mail, true);
++
++  return $result['result'];
+ }
+ 
+ /**

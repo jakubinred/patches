@@ -1,0 +1,335 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --color -ruN a/redirects_list_builder-3031125-9-d8.patch b/redirects_list_builder-3031125-9-d8.patch
+--- a/redirects_list_builder-3031125-9-d8.patch	1970-01-01 01:00:00
++++ b/redirects_list_builder-3031125-9-d8.patch	2024-08-22 18:48:31
+@@ -0,0 +1,172 @@
++diff --git a/src/Entity/Redirect.php b/src/Entity/Redirect.php
++index c1796c1..1ed5faf 100644
++--- a/src/Entity/Redirect.php
+++++ b/src/Entity/Redirect.php
++@@ -18,7 +18,7 @@ use Drupal\link\LinkItemInterface;
++  *   label = @Translation("Redirect"),
++  *   bundle_label = @Translation("Redirect type"),
++  *   handlers = {
++- *     "list_builder" = "Drupal\Core\Entity\EntityListBuilder",
+++ *     "list_builder" = "Drupal\redirect\RedirectListBuilder",
++  *     "form" = {
++  *       "default" = "Drupal\redirect\Form\RedirectForm",
++  *       "delete" = "Drupal\redirect\Form\RedirectDeleteForm",
++@@ -305,7 +305,7 @@ class Redirect extends ContentEntityBase {
++       ->setTranslatable(FALSE)
++       ->setSettings([
++         'link_type' => LinkItemInterface::LINK_GENERIC,
++-        'title' => DRUPAL_DISABLED
+++        'title' => DRUPAL_DISABLED,
++       ])
++       ->setDisplayOptions('form', [
++         'type' => 'link',
++diff --git a/src/Form/RedirectListExposedForm.php b/src/Form/RedirectListExposedForm.php
++new file mode 100644
++index 0000000..add0ee4
++--- /dev/null
+++++ b/src/Form/RedirectListExposedForm.php
++@@ -0,0 +1,33 @@
+++<?php
+++
+++namespace Drupal\redirect\Form;
+++
+++use Drupal\Core\Form\FormBase;
+++use Drupal\Core\Form\FormStateInterface;
+++
+++class RedirectListExposedForm extends FormBase {
+++
+++  public function getFormId() {
+++    return 'redirect_list_exposed_form';
+++  }
+++
+++  public function buildForm(array $form, FormStateInterface $form_state) {
+++    $form = [];
+++    $form['filters']['text'] = [
+++      '#title' => $this->t('FILTER REDIRECTS'),
+++      '#type' => 'textfield',
+++      '#default_value' => \Drupal::request()->get('text'),
+++    ];
+++    $form['filters']['submit_apply'] = [
+++      '#type' => 'submit',
+++      '#value' => t('Filter'),
+++    ];
+++
+++    return $form;
+++  }
+++
+++  public function submitForm(array &$form, FormStateInterface $form_state) {
+++    \Drupal::request()->query->set('text', $form_state->getValues()['text']);
+++    \Drupal::request()->query->set('form_id', 'redirect_list_exposed_form');
+++  }
+++}
++diff --git a/src/RedirectListBuilder.php b/src/RedirectListBuilder.php
++new file mode 100644
++index 0000000..c20c00f
++--- /dev/null
+++++ b/src/RedirectListBuilder.php
++@@ -0,0 +1,105 @@
+++<?php
+++
+++namespace Drupal\redirect;
+++
+++use Drupal\Core\Entity\EntityInterface;
+++use Drupal\Core\Entity\EntityListBuilder;
+++
+++/**
+++ * Defines a class to build a listing of redirect entities.
+++ *
+++ * @see \Drupal\redirect\Entity\Redirect
+++ */
+++class RedirectListBuilder extends EntityListBuilder {
+++
+++  /**
+++   * {@inheritdoc}
+++   */
+++  public function buildHeader() {
+++    $header = [
+++      'from' => [
+++        'field' => 'redirect_source__path',
+++        'specifier' => 'redirect_source__path',
+++        'class' => [RESPONSIVE_PRIORITY_LOW],
+++        'data' => $this->t('From'),
+++      ],
+++      'to' => [
+++        'field' => 'redirect_redirect__uri',
+++        'specifier' => 'redirect_redirect__uri',
+++        'class' => [RESPONSIVE_PRIORITY_LOW],
+++        'data' => $this->t('To'),
+++      ],
+++      'type' => $this->t('Type'),
+++    ];
+++    return $header + parent::buildHeader();
+++  }
+++
+++  /**
+++   * {@inheritdoc}
+++   */
+++  public function buildRow(EntityInterface $entity) {
+++    $row = [];
+++    $uri = $entity->toUrl();
+++    $options = $uri->getOptions();
+++    $uri->setOptions($options);
+++    $default_code = $entity->getStatusCode() ? $entity->getStatusCode() : \Drupal::config('redirect.settings')
+++      ->get('default_status_code');
+++
+++    $row['from']['data'] = [
+++      '#type' => 'link',
+++      '#title' => $entity->getSource()['path'],
+++      '#url' => $entity->get('redirect_source')->get(0)->getUrl(),
+++    ];
+++
+++    $row['to']['data'] = [
+++      '#type' => 'link',
+++      '#title' => str_replace('internal:', '', $entity->getRedirect()['uri']),
+++      '#url' => $entity->getRedirectUrl(),
+++    ];
+++
+++    $row['type'] = $default_code;
+++
+++    return $row + parent::buildRow($entity);
+++  }
+++
+++  /**
+++   * {@inheritdoc}
+++   */
+++  public function render() {
+++    //Exposed form
+++    $form = \Drupal::formBuilder()
+++      ->getForm('Drupal\redirect\Form\RedirectListExposedForm');
+++    $build['form'] = $form;
+++
+++    //Result table
+++    $build += parent::render();
+++    return $build;
+++  }
+++
+++  /**
+++   * {@inheritdoc}
+++   */
+++  protected function getEntityIds() {
+++    $header = $this->buildHeader();
+++    $form_id = \Drupal::request()->get('form_id');
+++
+++    $query = $this->getStorage()->getQuery();
+++
+++    if ($form_id && $form_id === 'redirect_list_exposed_form') {
+++      $text = \Drupal::request()->get('text');
+++
+++      $or_cond = $query->orConditionGroup()
+++        ->condition('redirect_source__path', $text, 'CONTAINS')
+++        ->condition('redirect_redirect__uri', $text, 'CONTAINS');
+++      $query->condition($or_cond);
+++    }
+++
+++    $query->tableSort($header);
+++
+++    // Only add the pager if a limit is specified.
+++    if ($this->limit) {
+++      $query->pager($this->limit);
+++    }
+++    return $query->execute();
+++  }
+++}
+diff --color -ruN a/src/Entity/Redirect.php b/src/Entity/Redirect.php
+--- a/src/Entity/Redirect.php	2024-08-10 10:02:22
++++ b/src/Entity/Redirect.php	2024-08-22 18:50:30
+@@ -18,7 +18,7 @@
+  *   label = @Translation("Redirect"),
+  *   bundle_label = @Translation("Redirect type"),
+  *   handlers = {
+- *     "list_builder" = "Drupal\Core\Entity\EntityListBuilder",
++ *     "list_builder" = "Drupal\redirect\RedirectListBuilder",
+  *     "form" = {
+  *       "default" = "Drupal\redirect\Form\RedirectForm",
+  *       "delete" = "Drupal\redirect\Form\RedirectDeleteForm",
+diff --color -ruN a/src/Form/RedirectListExposedForm.php b/src/Form/RedirectListExposedForm.php
+--- a/src/Form/RedirectListExposedForm.php	1970-01-01 01:00:00
++++ b/src/Form/RedirectListExposedForm.php	2024-08-22 18:50:30
+@@ -0,0 +1,33 @@
++<?php
++
++namespace Drupal\redirect\Form;
++
++use Drupal\Core\Form\FormBase;
++use Drupal\Core\Form\FormStateInterface;
++
++class RedirectListExposedForm extends FormBase {
++
++  public function getFormId() {
++    return 'redirect_list_exposed_form';
++  }
++
++  public function buildForm(array $form, FormStateInterface $form_state) {
++    $form = [];
++    $form['filters']['text'] = [
++      '#title' => $this->t('FILTER REDIRECTS'),
++      '#type' => 'textfield',
++      '#default_value' => \Drupal::request()->get('text'),
++    ];
++    $form['filters']['submit_apply'] = [
++      '#type' => 'submit',
++      '#value' => t('Filter'),
++    ];
++
++    return $form;
++  }
++
++  public function submitForm(array &$form, FormStateInterface $form_state) {
++    \Drupal::request()->query->set('text', $form_state->getValues()['text']);
++    \Drupal::request()->query->set('form_id', 'redirect_list_exposed_form');
++  }
++}
+diff --color -ruN a/src/RedirectListBuilder.php b/src/RedirectListBuilder.php
+--- a/src/RedirectListBuilder.php	1970-01-01 01:00:00
++++ b/src/RedirectListBuilder.php	2024-08-22 22:38:45
+@@ -0,0 +1,105 @@
++<?php
++
++namespace Drupal\redirect;
++
++use Drupal\Core\Entity\EntityInterface;
++use Drupal\Core\Entity\EntityListBuilder;
++
++/**
++ * Defines a class to build a listing of redirect entities.
++ *
++ * @see \Drupal\redirect\Entity\Redirect
++ */
++class RedirectListBuilder extends EntityListBuilder {
++
++  /**
++   * {@inheritdoc}
++   */
++  public function buildHeader() {
++    $header = [
++      'from' => [
++        'field' => 'redirect_source__path',
++        'specifier' => 'redirect_source__path',
++        'class' => [RESPONSIVE_PRIORITY_LOW],
++        'data' => $this->t('From'),
++      ],
++      'to' => [
++        'field' => 'redirect_redirect__uri',
++        'specifier' => 'redirect_redirect__uri',
++        'class' => [RESPONSIVE_PRIORITY_LOW],
++        'data' => $this->t('To'),
++      ],
++      'type' => $this->t('Type'),
++    ];
++    return $header + parent::buildHeader();
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function buildRow(EntityInterface $entity) {
++    $row = [];
++    $uri = $entity->toUrl();
++    $options = $uri->getOptions();
++    $uri->setOptions($options);
++    $default_code = $entity->getStatusCode() ? $entity->getStatusCode() : \Drupal::config('redirect.settings')
++      ->get('default_status_code');
++
++    $row['from']['data'] = [
++      '#type' => 'link',
++      '#title' => $entity->getSource()['path'],
++      '#url' => $entity->get('redirect_source')->get(0)->getUrl(),
++    ];
++
++    $row['to']['data'] = [
++      '#type' => 'link',
++      '#title' => str_replace('internal:', '', $entity->getRedirect()['uri']),
++      '#url' => $entity->getRedirectUrl(),
++    ];
++
++    $row['type'] = $default_code;
++
++    return $row + parent::buildRow($entity);
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function render() {
++    //Exposed form
++    $form = \Drupal::formBuilder()
++      ->getForm('Drupal\redirect\Form\RedirectListExposedForm');
++    $build['form'] = $form;
++
++    //Result table
++    $build += parent::render();
++    return $build;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function getEntityIds() {
++    $header = $this->buildHeader();
++    $form_id = \Drupal::request()->get('form_id');
++
++    $query = $this->getStorage()->getQuery()->accessCheck(TRUE);
++
++    if ($form_id && $form_id === 'redirect_list_exposed_form') {
++      $text = \Drupal::request()->get('text');
++
++      $or_cond = $query->orConditionGroup()
++        ->condition('redirect_source__path', $text, 'CONTAINS')
++        ->condition('redirect_redirect__uri', $text, 'CONTAINS');
++      $query->condition($or_cond);
++    }
++
++    $query->tableSort($header);
++
++    // Only add the pager if a limit is specified.
++    if ($this->limit) {
++      $query->pager($this->limit);
++    }
++    return $query->execute();
++  }
++}
