@@ -1,0 +1,28 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --color -ruN a/src/Plugin/migrate_plus/data_parser/Json.php b/src/Plugin/migrate_plus/data_parser/Json.php
+--- a/src/Plugin/migrate_plus/data_parser/Json.php	2024-07-19 19:46:38
++++ b/src/Plugin/migrate_plus/data_parser/Json.php	2024-10-11 18:55:49
+@@ -319,6 +319,23 @@
+           }
+         }
+         break;
++        case 'page_with_total_results':
++          if (NULL !== $selector_data && is_scalar($selector_data)) {
++            $total_records = $this->getSourceData($url, $this->configuration['pager']['total_records_selector']);
++            $page_size = $this->getSourceData($url, $this->configuration['pager']['page_size_selector']);
++            $total_pages = ceil($total_records / $page_size);
++
++            if($selector_data <= $total_pages) {
++              $path = UrlHelper::parse($url);
++
++              $path['query'][$this->configuration['pager']['page_key']] = $selector_data + 1;
++              $next_urls[] = Url::fromUri($path['path'], [
++                'query' => $path['query'],
++                'fragment' => $path['fragment'],
++              ])->toString();
++            }
++          }
++        break;
+     }
+ 
+     return array_merge(parent::getNextUrls($url), $next_urls);
