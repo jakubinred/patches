@@ -1,0 +1,234 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --color -ruN a/26.patch b/26.patch
+--- a/26.patch	1970-01-01 01:00:00
++++ b/26.patch	2025-04-11 16:59:11
+@@ -0,0 +1,141 @@
++From a1855a741e7defc427202981d196e52e64ac2209 Mon Sep 17 00:00:00 2001
++From: Marc-Antoine Marty <marc-antoine.marty@ecedi.fr>
++Date: Wed, 5 Feb 2025 18:14:27 +0100
++Subject: [PATCH 1/2] Issue #3492843 by junaidpv, martygraphie, s3b0un3t,
++ kiwad: Add support for Bluesky
++
++---
++ config/install/social_media.settings.yml | 16 ++++++++++++----
++ config/schema/social_media.schema.yml    |  3 +++
++ icons/bluesky.svg                        | 10 ++++++++++
++ src/Form/SocialMediaAdminForm.php        |  1 +
++ 4 files changed, 26 insertions(+), 4 deletions(-)
++ create mode 100644 icons/bluesky.svg
++
++diff --git a/config/install/social_media.settings.yml b/config/install/social_media.settings.yml
++index 7502f30..37a6d14 100644
++--- a/config/install/social_media.settings.yml
+++++ b/config/install/social_media.settings.yml
++@@ -33,13 +33,21 @@ social_media:
++     default_img: 1
++     weight: 4
++     attributes : "target|_blank\nclass|twitter\nrel|noopener noreferrer"
+++  bluesky:
+++    enable: 1
+++    api_url: "https://bsky.app/intent/compose?text=[current-page:title] [current-page:url]"
+++    api_event: href
+++    text: "Bluesky"
+++    default_img: 1
+++    weight: 5
+++    attributes: "target|_blank\r\nclass|bluesky\r\nrel|noopener noreferrer"
++   pinterest:
++     enable: 1
++     api_url: "https://www.pinterest.com/pin/create/button/?url=[current-page:url]&description=[current-page:title]"
++     api_event : "href"
++     text: "Pinterest"
++     default_img: 1
++-    weight: 5
+++    weight: 6
++     attributes : "target|_blank\nclass|pinterest\nrel|noopener noreferrer"
++   whatsapp:
++     enable: 0
++@@ -47,14 +55,14 @@ social_media:
++     api_event: "href"
++     default_img: 1
++     attributes: "class|whatsapp show-for-small-only\ndata-action|share/whatsapp/share"
++-    weight: 6
+++    weight: 7
++   email:
++     enable: 1
++     api_url: "mailto:?subject=[current-page:title]&body=Check out this site [current-page:url]"
++     api_event : "href"
++     text: "Email"
++     default_img: 1
++-    weight: 7
+++    weight: 8
++     attributes : "class|email"
++   print:
++     enable: 0
++@@ -63,5 +71,5 @@ social_media:
++     text: "Print"
++     default_img: 1
++     attributes : "class|print"
++-    weight: 8
+++    weight: 9
++ langcode: en
++diff --git a/config/schema/social_media.schema.yml b/config/schema/social_media.schema.yml
++index 76cefba..46e2e8f 100644
++--- a/config/schema/social_media.schema.yml
+++++ b/config/schema/social_media.schema.yml
++@@ -94,6 +94,9 @@ social_media.settings:
++         twitter:
++           type: social_media.item.twitter
++           label: 'Twitter'
+++        bluesky:
+++          type: social_media.item.bluesky
+++          label: 'Bluesky'
++         pinterest:
++           type: social_media.item.pinterest
++           label: 'Pinterest'
++diff --git a/icons/bluesky.svg b/icons/bluesky.svg
++new file mode 100644
++index 0000000..d47e0db
++--- /dev/null
+++++ b/icons/bluesky.svg
++@@ -0,0 +1,10 @@
+++<?xml version="1.0" encoding="UTF-8"?>
+++<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40px" height="40px"
+++     viewBox="0 0 40 40" version="1.1">
+++  <g id="surface1">
+++    <path style=" stroke:none;fill-rule:nonzero;fill:rgb(23.137255%,62.7451%,99.607843%);fill-opacity:1;"
+++          d="M 19.976562 39.734375 C 9.066406 39.734375 0.21875 30.890625 0.21875 19.976562 C 0.21875 9.066406 9.066406 0.21875 19.976562 0.21875 C 30.890625 0.21875 39.734375 9.066406 39.734375 19.976562 C 39.734375 30.890625 30.890625 39.734375 19.976562 39.734375 Z M 19.976562 39.734375 "/>
+++    <path style=" stroke:none;fill-rule:nonzero;fill:rgb(100%,100%,100%);fill-opacity:1;"
+++          d="M 13.382812 11.542969 C 16.050781 13.550781 18.921875 17.613281 19.976562 19.792969 C 21.03125 17.613281 23.902344 13.550781 26.574219 11.542969 C 28.5 10.097656 31.621094 8.980469 31.621094 12.539062 C 31.621094 13.25 31.214844 18.515625 30.976562 19.367188 C 30.144531 22.339844 27.113281 23.097656 24.421875 22.636719 C 29.128906 23.441406 30.328125 26.09375 27.738281 28.75 C 22.828125 33.792969 20.675781 27.484375 20.125 25.867188 C 20.027344 25.570312 19.976562 25.433594 19.976562 25.550781 C 19.976562 25.433594 19.929688 25.570312 19.828125 25.867188 C 19.277344 27.484375 17.128906 33.792969 12.214844 28.75 C 9.628906 26.09375 10.824219 23.441406 15.535156 22.636719 C 12.839844 23.097656 9.8125 22.339844 8.980469 19.367188 C 8.742188 18.515625 8.332031 13.25 8.332031 12.539062 C 8.332031 8.980469 11.453125 10.097656 13.382812 11.542969 Z M 13.382812 11.542969 "/>
+++  </g>
+++</svg>
++diff --git a/src/Form/SocialMediaAdminForm.php b/src/Form/SocialMediaAdminForm.php
++index cb3582f..750fce1 100644
++--- a/src/Form/SocialMediaAdminForm.php
+++++ b/src/Form/SocialMediaAdminForm.php
++@@ -249,6 +249,7 @@ class SocialMediaAdminForm extends ConfigFormBase {
++       'email' => $this->t('Email'),
++       'whatsapp' => $this->t('whatsapp'),
++       'print' => $this->t('Print'),
+++      'bluesky' => $this->t('Bluesky'),
++     ];
++ 
++     $event = new SocialMediaEvent($elements);
++-- 
++GitLab
++
++
++From d7e6957c6057bf432d9ce706a6f5ffc1aee15236 Mon Sep 17 00:00:00 2001
++From: Marc-Antoine Marty <marc-antoine.marty@ecedi.fr>
++Date: Wed, 5 Feb 2025 18:17:35 +0100
++Subject: [PATCH 2/2] Issue #3492843 by martygraphie : Reorder bluesky element
++ in admin form
++
++---
++ src/Form/SocialMediaAdminForm.php | 2 +-
++ 1 file changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/src/Form/SocialMediaAdminForm.php b/src/Form/SocialMediaAdminForm.php
++index 750fce1..abaac4a 100644
++--- a/src/Form/SocialMediaAdminForm.php
+++++ b/src/Form/SocialMediaAdminForm.php
++@@ -245,11 +245,11 @@ class SocialMediaAdminForm extends ConfigFormBase {
++       'facebook_msg' => $this->t('Facebook messenger'),
++       'linkedin' => $this->t('Linkedin'),
++       'twitter' => $this->t('Twitter'),
+++      'bluesky' => $this->t('Bluesky'),
++       'pinterest' => $this->t('Pinterest'),
++       'email' => $this->t('Email'),
++       'whatsapp' => $this->t('whatsapp'),
++       'print' => $this->t('Print'),
++-      'bluesky' => $this->t('Bluesky'),
++     ];
++ 
++     $event = new SocialMediaEvent($elements);
++-- 
++GitLab
++
+diff --color -ruN a/config/install/social_media.settings.yml b/config/install/social_media.settings.yml
+--- a/config/install/social_media.settings.yml	2025-04-11 16:41:31
++++ b/config/install/social_media.settings.yml	2025-04-11 17:00:50
+@@ -33,13 +33,21 @@
+     default_img: 1
+     weight: 4
+     attributes : "target|_blank\nclass|twitter\nrel|noopener noreferrer"
++  bluesky:
++    enable: 1
++    api_url: "https://bsky.app/intent/compose?text=[current-page:title] [current-page:url]"
++    api_event: href
++    text: "Bluesky"
++    default_img: 1
++    weight: 5
++    attributes: "target|_blank\r\nclass|bluesky\r\nrel|noopener noreferrer"
+   pinterest:
+     enable: 1
+     api_url: "https://www.pinterest.com/pin/create/button/?url=[current-page:url]&description=[current-page:title]"
+     api_event : "href"
+     text: "Pinterest"
+     default_img: 1
+-    weight: 5
++    weight: 6
+     attributes : "target|_blank\nclass|pinterest\nrel|noopener noreferrer"
+   whatsapp:
+     enable: 0
+@@ -47,14 +55,14 @@
+     api_event: "href"
+     default_img: 1
+     attributes: "class|whatsapp show-for-small-only\ndata-action|share/whatsapp/share"
+-    weight: 6
++    weight: 7
+   email:
+     enable: 1
+     api_url: "mailto:?subject=[current-page:title]&body=Check out this site [current-page:url]"
+     api_event : "href"
+     text: "Email"
+     default_img: 1
+-    weight: 7
++    weight: 8
+     attributes : "class|email"
+   print:
+     enable: 0
+@@ -63,5 +71,5 @@
+     text: "Print"
+     default_img: 1
+     attributes : "class|print"
+-    weight: 8
++    weight: 9
+ langcode: en
+diff --color -ruN a/config/schema/social_media.schema.yml b/config/schema/social_media.schema.yml
+--- a/config/schema/social_media.schema.yml	2025-04-11 16:41:31
++++ b/config/schema/social_media.schema.yml	2025-04-11 18:59:40
+@@ -94,6 +94,9 @@
+         x:
+           type: social_media.item.x
+           label: 'X'
++        bluesky:
++          type: social_media.item.bluesky
++          label: 'Bluesky'
+         pinterest:
+           type: social_media.item.pinterest
+           label: 'Pinterest'
+diff --color -ruN a/icons/bluesky.svg b/icons/bluesky.svg
+--- a/icons/bluesky.svg	1970-01-01 01:00:00
++++ b/icons/bluesky.svg	2025-04-11 17:00:50
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40px" height="40px"
++     viewBox="0 0 40 40" version="1.1">
++  <g id="surface1">
++    <path style=" stroke:none;fill-rule:nonzero;fill:rgb(23.137255%,62.7451%,99.607843%);fill-opacity:1;"
++          d="M 19.976562 39.734375 C 9.066406 39.734375 0.21875 30.890625 0.21875 19.976562 C 0.21875 9.066406 9.066406 0.21875 19.976562 0.21875 C 30.890625 0.21875 39.734375 9.066406 39.734375 19.976562 C 39.734375 30.890625 30.890625 39.734375 19.976562 39.734375 Z M 19.976562 39.734375 "/>
++    <path style=" stroke:none;fill-rule:nonzero;fill:rgb(100%,100%,100%);fill-opacity:1;"
++          d="M 13.382812 11.542969 C 16.050781 13.550781 18.921875 17.613281 19.976562 19.792969 C 21.03125 17.613281 23.902344 13.550781 26.574219 11.542969 C 28.5 10.097656 31.621094 8.980469 31.621094 12.539062 C 31.621094 13.25 31.214844 18.515625 30.976562 19.367188 C 30.144531 22.339844 27.113281 23.097656 24.421875 22.636719 C 29.128906 23.441406 30.328125 26.09375 27.738281 28.75 C 22.828125 33.792969 20.675781 27.484375 20.125 25.867188 C 20.027344 25.570312 19.976562 25.433594 19.976562 25.550781 C 19.976562 25.433594 19.929688 25.570312 19.828125 25.867188 C 19.277344 27.484375 17.128906 33.792969 12.214844 28.75 C 9.628906 26.09375 10.824219 23.441406 15.535156 22.636719 C 12.839844 23.097656 9.8125 22.339844 8.980469 19.367188 C 8.742188 18.515625 8.332031 13.25 8.332031 12.539062 C 8.332031 8.980469 11.453125 10.097656 13.382812 11.542969 Z M 13.382812 11.542969 "/>
++  </g>
++</svg>
+diff --color -ruN a/src/Form/SocialMediaAdminForm.php b/src/Form/SocialMediaAdminForm.php
+--- a/src/Form/SocialMediaAdminForm.php	2025-04-11 16:41:31
++++ b/src/Form/SocialMediaAdminForm.php	2025-04-11 17:00:50
+@@ -249,6 +249,7 @@
+       'email' => $this->t('Email'),
+       'whatsapp' => $this->t('whatsapp'),
+       'print' => $this->t('Print'),
++      'bluesky' => $this->t('Bluesky'),
+     ];
+ 
+     $event = new SocialMediaEvent($elements);
