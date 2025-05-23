@@ -1,0 +1,13 @@
+diff --color -ruN a/menu_ui.module b/menu_ui.module
+--- a/menu_ui.module	2025-05-23 19:15:14
++++ b/menu_ui.module	2025-05-23 19:14:15
+@@ -223,6 +223,9 @@
+   /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
+   $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
+   $type_menus_ids = $node_type->getThirdPartySetting('menu_ui', 'available_menus', ['main']);
++
++  \Drupal::moduleHandler()->alter('menu_ui_type_menus_ids', $type_menus_ids, $node, $form_state);
++
+   if (empty($type_menus_ids)) {
+     return;
+   }
