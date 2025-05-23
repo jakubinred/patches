@@ -1,4 +1,4 @@
-diff --color -ruN a/menu_ui.module b/menu_ui.module
+diff --color -ruN a/core/modules/menu_ui/menu_ui.module b/core/modules/menu_ui/menu_ui.module
 --- a/menu_ui.module	2025-05-23 19:15:14
 +++ b/menu_ui.module	2025-05-23 19:14:15
 @@ -223,6 +223,9 @@
