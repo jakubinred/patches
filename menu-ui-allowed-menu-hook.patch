@@ -1,6 +1,6 @@
 diff --color -ruN a/core/modules/menu_ui/menu_ui.module b/core/modules/menu_ui/menu_ui.module
---- a/menu_ui.module	2025-05-23 19:15:14
-+++ b/menu_ui.module	2025-05-23 19:14:15
+--- a/core/modules/menu_ui/menu_ui.module	2025-05-23 19:15:14
++++ b/core/modules/menu_ui/menu_ui.module	2025-05-23 19:14:15
 @@ -223,6 +223,9 @@
    /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
    $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
