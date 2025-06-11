@@ -1,0 +1,33 @@
+diff --color -ruNp a/src/Controller/LookupController.php b/src/Controller/LookupController.php
+--- a/src/Controller/LookupController.php	2025-06-11 16:53:08
++++ b/src/Controller/LookupController.php	2025-06-11 16:51:54
+@@ -64,6 +64,7 @@ class LookupController extends ControllerBase {
+         ],
+         '#header' => [
+           'ID',
++          'Beatrix ID',
+           'Label',
+           'Bundle',
+         ],
+@@ -72,6 +73,10 @@ class LookupController extends ControllerBase {
+         $element['slot_' . $slot]['options'][$i]['id'] = [
+           '#plain_text' => $opt['id'],
+           '#title' => 'ID',
++        ];
++         $element['slot_' . $slot]['options'][$i]['beatrix_id'] = [
++          '#plain_text' => $opt['beatrix_id'],
++          '#title' => 'Beatrix ID',
+         ];
+         $element['slot_' . $slot]['options'][$i]['label'] = [
+           '#plain_text' => $opt['label'],
+diff --color -ruNp a/src/Lookup.php b/src/Lookup.php
+--- a/src/Lookup.php	2025-06-11 16:53:08
++++ b/src/Lookup.php	2025-06-11 16:51:54
+@@ -172,6 +172,7 @@ class Lookup {
+   protected function entityLabelMapper($entity) {
+     return [
+       'id' => $entity->id(),
++      'beatrix_id' => ($entity->hasField('field_source_id') && !$entity->field_source_id->isEmpty()) ? $entity->get('field_source_id')->value : '',
+       'label' => $entity->label(),
+       'bundle' => $entity->bundle(),
+     ];
