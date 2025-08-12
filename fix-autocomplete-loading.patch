@@ -1,0 +1,72 @@
+diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
+--- a/js/autocomplete.js	2025-08-12 22:50:05
++++ b/js/autocomplete.js	2025-08-12 22:49:27
+@@ -15,6 +15,7 @@
+   const createAutocomplete = (parent, slot) => {
+     const target_id = parent.querySelector('select[name$="[target_id]"]')?.value;
+     const display_id = parent.querySelector('select[name$="[display_id]"]')?.value;
++
+     if (!target_id || !display_id) {
+       return;
+     }
+@@ -345,34 +346,37 @@
+         console.warn('Choices.js library is not loaded. Autocomplete functionality will not be available.');
+         return;
+       }
++      
++      if(context.querySelector('select[name$="[display_id]"]') !== null && context.querySelector('select[name$="[display_id]"]').value) {
++        // Use once() to prevent duplicate initialization
++        const slotDivs = context.querySelectorAll('.vaa-slots > div');
+ 
+-      // Use once() to prevent duplicate initialization
+-      const slotDivs = once('viewfield-argument-helper-autocomplete', '.vaa-slots > div', context);
++        slotDivs.forEach((slot) => {
++          // Outer wrapper for the field.
++          const parent = slot.closest('div.field--type-viewfield');
++          //display html of parent
++          if (!parent) {
++            console.warn('Could not find viewfield parent for slot element.');
++            return;
++          }
+ 
+-      slotDivs.forEach((slot) => {
+-        // Outer wrapper for the field.
+-        const parent = slot.closest('div.field--type-viewfield');
+-        if (!parent) {
+-          console.warn('Could not find viewfield parent for slot element.');
+-          return;
+-        }
++          createAutocomplete(parent, slot);
+ 
+-        createAutocomplete(parent, slot);
+-
+-        // Detect changes to the target_id and display_id selects.
+-        const selects = parent.querySelectorAll('select.form-select');
+-        selects.forEach((select) => {
+-          select.addEventListener('change', () => {
+-            createAutocomplete(parent, slot);
+-            // Try to get display_id after a short delay.
+-            if (!parent.querySelector('select[name$="[display_id]"]')?.value) {
+-              setTimeout(() => {
+-                createAutocomplete(parent, slot);
+-              }, 500);
+-            }
++          // Detect changes to the target_id and display_id selects.
++          const selects = parent.querySelectorAll('select.form-select');
++          selects.forEach((select) => {
++            select.addEventListener('change', () => {
++              createAutocomplete(parent, slot);
++              // Try to get display_id after a short delay.
++              if (!parent.querySelector('select[name$="[display_id]"]')?.value) {
++                setTimeout(() => {
++                  createAutocomplete(parent, slot);
++                }, 500);
++              }
++            });
+           });
+         });
+-      });
++      }
+     },
+ 
+     /**
