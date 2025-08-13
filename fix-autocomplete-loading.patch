@@ -1,7 +1,7 @@
 diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
 --- a/js/autocomplete.js	2025-08-12 22:50:05
-+++ b/js/autocomplete.js	2025-08-12 22:49:27
-@@ -15,6 +15,7 @@
++++ b/js/autocomplete.js	2025-08-13 17:08:19
+@@ -15,12 +15,13 @@
    const createAutocomplete = (parent, slot) => {
      const target_id = parent.querySelector('select[name$="[target_id]"]')?.value;
      const display_id = parent.querySelector('select[name$="[display_id]"]')?.value;
@@ -9,7 +9,14 @@ diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
      if (!target_id || !display_id) {
        return;
      }
-@@ -345,34 +346,37 @@
+ 
+     // Clear existing content to prevent duplicates
+-    const existingContent = slot.querySelectorAll('.viewfield-argument-helper__element');
++    const existingContent = parent.querySelectorAll('.viewfield-argument-helper__element');
+     existingContent.forEach(element => element.remove());
+ 
+     // Fetch slot information and create autocomplete for each.
+@@ -345,34 +346,46 @@
          console.warn('Choices.js library is not loaded. Autocomplete functionality will not be available.');
          return;
        }
@@ -21,11 +28,8 @@ diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
 -      // Use once() to prevent duplicate initialization
 -      const slotDivs = once('viewfield-argument-helper-autocomplete', '.vaa-slots > div', context);
 +        slotDivs.forEach((slot) => {
-+          // Outer wrapper for the field.
-+          const parent = slot.closest('div.field--type-viewfield');
-+          //display html of parent
-+          if (!parent) {
-+            console.warn('Could not find viewfield parent for slot element.');
++          // Skip if already initialized
++          if (slot.hasAttribute('data-autocomplete-initialized')) {
 +            return;
 +          }
  
@@ -36,10 +40,17 @@ diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
 -          console.warn('Could not find viewfield parent for slot element.');
 -          return;
 -        }
-+          createAutocomplete(parent, slot);
++          // Outer wrapper for the field.
++          const parent = slot.closest('div.field--type-viewfield');
++          if (!parent) {
++            console.warn('Could not find viewfield parent for slot element.');
++            return;
++          }
  
 -        createAutocomplete(parent, slot);
--
++          // Mark as initialized
++          slot.setAttribute('data-autocomplete-initialized', 'true');
+ 
 -        // Detect changes to the target_id and display_id selects.
 -        const selects = parent.querySelectorAll('select.form-select');
 -        selects.forEach((select) => {
@@ -51,10 +62,14 @@ diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
 -                createAutocomplete(parent, slot);
 -              }, 500);
 -            }
++          createAutocomplete(parent, slot);
++
 +          // Detect changes to the target_id and display_id selects.
 +          const selects = parent.querySelectorAll('select.form-select');
 +          selects.forEach((select) => {
 +            select.addEventListener('change', () => {
++              // Remove initialization flag to allow recreation
++              slot.removeAttribute('data-autocomplete-initialized');
 +              createAutocomplete(parent, slot);
 +              // Try to get display_id after a short delay.
 +              if (!parent.querySelector('select[name$="[display_id]"]')?.value) {
