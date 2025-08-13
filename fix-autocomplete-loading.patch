@@ -1,7 +1,7 @@
 diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
 --- a/js/autocomplete.js	2025-08-12 22:50:05
-+++ b/js/autocomplete.js	2025-08-13 17:08:19
-@@ -15,12 +15,13 @@
++++ b/js/autocomplete.js	2025-08-13 17:20:04
+@@ -15,6 +15,7 @@
    const createAutocomplete = (parent, slot) => {
      const target_id = parent.querySelector('select[name$="[target_id]"]')?.value;
      const display_id = parent.querySelector('select[name$="[display_id]"]')?.value;
@@ -9,13 +9,6 @@ diff --color -ruN a/js/autocomplete.js b/js/autocomplete.js
      if (!target_id || !display_id) {
        return;
      }
- 
-     // Clear existing content to prevent duplicates
--    const existingContent = slot.querySelectorAll('.viewfield-argument-helper__element');
-+    const existingContent = parent.querySelectorAll('.viewfield-argument-helper__element');
-     existingContent.forEach(element => element.remove());
- 
-     // Fetch slot information and create autocomplete for each.
 @@ -345,34 +346,46 @@
          console.warn('Choices.js library is not loaded. Autocomplete functionality will not be available.');
          return;
