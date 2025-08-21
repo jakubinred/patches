@@ -1,0 +1,20 @@
+diff --color -ruN a/migrate_cron.module b/migrate_cron.module
+--- a/migrate_cron.module	2025-08-21 17:00:04
++++ b/migrate_cron.module	2025-08-21 17:20:45
+@@ -9,7 +9,6 @@
+ use Drupal\migrate\MigrateMessage;
+ use Drupal\migrate\Plugin\MigrationInterface;
+ use Drupal\migrate_tools\MigrateExecutable;
+-use Drupal\migrate_tools\Drush9LogMigrateMessage;
+ 
+ /**
+  * Implements hook_help().
+@@ -60,7 +59,7 @@
+           if ($config->get("{$migrationId}_sync")) {
+             $migrate->syncSource = TRUE;
+           }
+-          $executable = new MigrateExecutable($migrate, new Drush9LogMigrateMessage(\Drupal::logger('migrate_cron')));
++          $executable = new MigrateExecutable($migrate, new MigrateMessage());
+           $executable->import();
+         }
+       }
