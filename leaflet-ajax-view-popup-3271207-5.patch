@@ -1,7 +1,9 @@
-Binary files a/.DS_Store and b/.DS_Store differ
+Binary files a/js/.DS_Store and b/js/.DS_Store differ
+Binary files a/modules/.DS_Store and b/modules/.DS_Store differ
+Binary files a/modules/leaflet_views/.DS_Store and b/modules/leaflet_views/.DS_Store differ
 diff --color -ruN a/modules/leaflet_views/leaflet_views.routing.yml b/modules/leaflet_views/leaflet_views.routing.yml
---- a/modules/leaflet_views/leaflet_views.routing.yml	2024-11-06 22:46:31
-+++ b/modules/leaflet_views/leaflet_views.routing.yml	2024-11-26 21:33:18
+--- a/modules/leaflet_views/leaflet_views.routing.yml	2025-10-03 22:39:16
++++ b/modules/leaflet_views/leaflet_views.routing.yml	2025-10-13 22:50:02
 @@ -8,3 +8,9 @@
      parameters:
        entity:
@@ -15,7 +17,7 @@ diff --color -ruN a/modules/leaflet_views/leaflet_views.routing.yml b/modules/le
 \ No newline at end of file
 diff --color -ruN a/modules/leaflet_views/src/Controller/LeafletAjaxViewPopupController.php b/modules/leaflet_views/src/Controller/LeafletAjaxViewPopupController.php
 --- a/modules/leaflet_views/src/Controller/LeafletAjaxViewPopupController.php	1970-01-01 01:00:00
-+++ b/modules/leaflet_views/src/Controller/LeafletAjaxViewPopupController.php	2024-11-26 21:33:18
++++ b/modules/leaflet_views/src/Controller/LeafletAjaxViewPopupController.php	2025-10-13 22:50:03
 @@ -0,0 +1,75 @@
 +<?php
 +
@@ -93,66 +95,53 @@ diff --color -ruN a/modules/leaflet_views/src/Controller/LeafletAjaxViewPopupCon
 +
 +}
 diff --color -ruN a/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php b/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php
---- a/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php	2024-11-06 22:46:31
-+++ b/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php	2024-11-26 21:33:19
-@@ -977,6 +977,12 @@
-                   $popup_source = !empty($this->options['description_field']) ? $this->options['description_field'] : ($this->options['leaflet_popup']['value'] ?? '');
-                   $popup_view_mode = !empty($this->options['view_mode']) ? $this->options['view_mode'] : $this->options['leaflet_popup']['view_mode'];
+--- a/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php	2025-10-03 22:39:16
++++ b/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php	2025-10-13 22:50:03
+@@ -1230,6 +1230,12 @@
+       $this->options['view_mode'] :
+       $this->options['leaflet_popup']['view_mode'];
  
-+                  // Define possible tokens.
-+                  $tokens = [];
-+                  foreach ($this->rendered_fields[$result->index] as $field_name => $field_value) {
-+                    $tokens[$field_name] = $field_value;
-+                  }
++    // Define possible tokens.
++      $tokens = [];
++      foreach ($this->rendered_fields[$result->index] as $field_name => $field_value) {
++        $tokens[$field_name] = $field_value;
++      }
 +
-                   switch ($popup_source) {
-                     case '#rendered_entity':
-                       $build = $this->entityManager->getViewBuilder($entity_type)
-@@ -1011,7 +1017,27 @@
-                       ];
-                       $popup_content = $this->renderer->renderPlain($render_row);
-                       break;
-+                      
-+                    case '#rendered_view_ajax':
-+                        $view_id = $this->options['leaflet_popup']['view_id'];
-+                        $view_display = $this->options['leaflet_popup']['view_display'];
-+                        $arg_tokens = $this->options['leaflet_popup']['view_arguments'];
+     $build_for_bubbleable_metadata = [];
  
-+                        $arguments = str_replace(["\n", "\r"], "", $this->viewsTokenReplace($arg_tokens, $tokens));
-+                        $parameters = [
-+                          'view_id' => $view_id,
-+                          'view_display' => $view_display,
-+                          'arguments' => base64_encode($arguments),
-+                          'identifier' => base64_encode(LeafletAjaxPopupController::getPopupIdentifierSelector($entity_type, $entity->id(), base64_encode($arguments), $langcode)),
-+                        ];
+     switch ($popup_source) {
+@@ -1276,7 +1282,26 @@
+           $popup_content = $this->renderer->renderPlain($render_row);
+         }
+         break;
++      case '#rendered_view_ajax':
++        $view_id = $this->options['leaflet_popup']['view_id'];
++        $view_display = $this->options['leaflet_popup']['view_display'];
++        $arg_tokens = $this->options['leaflet_popup']['view_arguments'];
+ 
++        $arguments = str_replace(["\n", "\r"], "", $this->viewsTokenReplace($arg_tokens, $tokens));
++        $parameters = [
++          'view_id' => $view_id,
++          'view_display' => $view_display,
++          'arguments' => base64_encode($arguments),
++          'identifier' => base64_encode(LeafletAjaxPopupController::getPopupIdentifierSelector($entity_type, $entity->id(), base64_encode($arguments), $langcode)),
++        ];
 +                        
-+                        $url = Url::fromRoute('leaflet_views.ajax_view_popup', $parameters);
-+                        $popup_content = sprintf('<div class="leaflet-ajax-popup" data-leaflet-ajax-popup="%s" %s></div>',
-+                        $url->toString(), LeafletAjaxPopupController::getPopupIdentifierAttribute($entity_type, $entity->id(), base64_encode($arguments), $langcode));
-+                        
-+                        $map['settings']['ajaxPoup'] = TRUE;
-+                        break;
++        $url = Url::fromRoute('leaflet_views.ajax_view_popup', $parameters);
++        $popup_content = sprintf('<div class="leaflet-ajax-popup" data-leaflet-ajax-popup="%s" %s></div>',
++        $url->toString(), LeafletAjaxPopupController::getPopupIdentifierAttribute($entity_type, $entity->id(), base64_encode($arguments), $langcode));
 +
-                     default:
-                       // Row rendering of single specified field value (without
-                       // labels).
-@@ -1033,12 +1059,6 @@
-                     $this->options['icon'] = array_replace($map['icon'], $this->options['icon']);
-                   }
- 
--                  // Define possible tokens.
--                  $tokens = [];
--                  foreach ($this->rendered_fields[$result->index] as $field_name => $field_value) {
--                    $tokens[$field_name] = $field_value;
--                  }
--
-                   $icon_type = $this->options['icon']['iconType'] ?? 'marker';
- 
-                   // Relates each result feature with additional properties.
-@@ -1304,6 +1324,10 @@
++        $map['settings']['ajaxPopup'] = TRUE;
++        break;
++
+       default:
+         // Row rendering of single specified field value (without labels).
+         $popup_content = !empty($popup_source) ? $this->rendered_fields[$result->index][$popup_source] : '';
+@@ -1698,6 +1723,11 @@
      $options['entity_source'] = ['default' => '__base_table'];
      $options['name_field'] = ['default' => ''];
      $options['weight'] = ['default' => NULL];
++    $options['weight'] = ['default' => NULL];
 +    $options['view_mode'] = ['default' => 'full'];
 +    $options['view_arguments'] = ['default' => ''];
 +    $options['view_id'] = ['default' => ''];
@@ -161,17 +150,17 @@ diff --color -ruN a/modules/leaflet_views/src/Plugin/views/style/LeafletMap.php 
      $leaflet_map_default_settings = [];
      foreach (self::getDefaultSettings() as $k => $setting) {
 diff --color -ruN a/src/LeafletSettingsElementsTrait.php b/src/LeafletSettingsElementsTrait.php
---- a/src/LeafletSettingsElementsTrait.php	2024-11-06 22:46:31
-+++ b/src/LeafletSettingsElementsTrait.php	2024-11-26 21:33:18
-@@ -6,6 +6,7 @@
+--- a/src/LeafletSettingsElementsTrait.php	2025-10-03 22:39:16
++++ b/src/LeafletSettingsElementsTrait.php	2025-10-13 22:50:02
+@@ -8,6 +8,7 @@
  use Drupal\Core\Url;
- use Drupal\Component\Serialization\Json;
+ use Drupal\leaflet\Plugin\Field\FieldWidget\LeafletDefaultWidget;
  use Drupal\views\Plugin\views\ViewsPluginInterface;
 +use Drupal\views\Views;
  
  /**
   * Class LeafletSettingsElementsTrait.
-@@ -964,6 +965,10 @@
+@@ -994,6 +995,10 @@
            '#rendered_entity_ajax' => $this->t('< @entity entity via ajax >', ['@entity' => $entity_type]),
            '#rendered_view_fields' => $this->t('# Rendered View Fields (with field label, format, classes, etc)'),
          ];
@@ -182,7 +171,7 @@ diff --color -ruN a/src/LeafletSettingsElementsTrait.php b/src/LeafletSettingsEl
        }
  
        // Define the Popup source and Popup view mode with backward
-@@ -1009,6 +1014,54 @@
+@@ -1039,6 +1044,54 @@
          '#states' => [
            'invisible' => [
              'select[name="' . $leaflet_popup_selector . '"]' => ['value' => ''],
