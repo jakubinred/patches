@@ -1,0 +1,41 @@
+Binary files a/.DS_Store and b/.DS_Store differ
+Binary files a/bower_components/.DS_Store and b/bower_components/.DS_Store differ
+Binary files a/config/.DS_Store and b/config/.DS_Store differ
+diff --color -ruN a/jquery_timepicker.info.yml b/jquery_timepicker.info.yml
+--- a/jquery_timepicker.info.yml	2025-10-22 22:39:49
++++ b/jquery_timepicker.info.yml	2025-10-22 22:44:42
+@@ -1,7 +1,7 @@
+ name: jquery.timepicker polyfill
+ type: module
+ description: Polyfill for html5 time fields
+-core_version_requirement: ^9.4 || ^10
++core_version_requirement: ^9.4 || ^10 || ^11
+ package: NewCity
+ configure: jquery_timepicker.settings
+ # Information added by Drupal.org packaging script on 2024-02-20
+diff --color -ruN a/jquery_timepicker.libraries.yml b/jquery_timepicker.libraries.yml
+--- a/jquery_timepicker.libraries.yml	2025-10-22 22:39:49
++++ b/jquery_timepicker.libraries.yml	2025-10-22 22:44:17
+@@ -1,3 +1,13 @@
++modernizr:
++  header: true
++  remote: https://github.com/Modernizr/Modernizr
++  license:
++    name: MIT
++    url: https://modernizr.com/license/
++    gpl-compatible: true
++  version: "3.11.7"
++  js:
++    assets/vendor/modernizr/modernizr.min.js: { preprocess: 0, weight: -21, minified: true }
+ polyfill:
+   version: 1.x
+   css:
+@@ -8,7 +18,7 @@
+     bower_components/jt.timepicker/jquery.timepicker.js: {}
+     js/timepicker.js: {}
+   dependencies:
+-    - core/modernizr
++    - jquery_timepicker/modernizr
+     - core/jquery.ui.datepicker
+     - core/misc/date
+     - core/jquery
