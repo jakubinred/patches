@@ -1,6 +1,4 @@
 Binary files a/.DS_Store and b/.DS_Store differ
-Binary files a/bower_components/.DS_Store and b/bower_components/.DS_Store differ
-Binary files a/config/.DS_Store and b/config/.DS_Store differ
 diff --color -ruN a/jquery_timepicker.info.yml b/jquery_timepicker.info.yml
 --- a/jquery_timepicker.info.yml	2025-10-22 22:39:49
 +++ b/jquery_timepicker.info.yml	2025-10-22 22:44:42
