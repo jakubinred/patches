@@ -1,0 +1,911 @@
+From 1a4d4ec9ecaccfb5c43aeeaf6232fa6b9d77cd8c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Sat, 23 Aug 2025 20:01:09 +0200
+Subject: [PATCH 1/8] Fix paragraph handling within list items in
+ _filter_autop().
+
+---
+ core/modules/filter/filter.module | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/core/modules/filter/filter.module b/core/modules/filter/filter.module
+index 9eec4e2e5493..2015aea1a9e4 100644
+--- a/core/modules/filter/filter.module
++++ b/core/modules/filter/filter.module
+@@ -698,7 +698,13 @@ function _filter_autop($text) {
+       // whitespace.
+       $chunk = preg_replace('|<p>\s*</p>\n?|', '', $chunk);
+       $chunk = preg_replace('!<p>\s*(</?' . $block . '[^>]*>)!', "$1", $chunk);
+-      $chunk = preg_replace('!(</?' . $block . '[^>]*>)\s*</p>!', "$1", $chunk);
++      // Do not strip a paragraph's closing tag that legitimately appears before a list item boundary.
++      // Exclude <li> from this rule to keep paragraphs inside list items well-formed.
++      $chunk = preg_replace('~(</?(?!(?:li)\b)' . $block . '[^>]*>)\s*</p>~', "$1", $chunk);
++      // Ensure paragraphs are closed before closing list items, not after them.
++      $chunk = preg_replace('!</li>\s*</p>!i', '</p></li>', $chunk);
++      // Ensure the first paragraph inside an <li> has an opening <p> if it ends with </p>.
++      $chunk = preg_replace('~<li(\b[^>]*)>(\s*)(?!<p>)((?:(?!</li>).)*?)</p>~is', '<li$1>$2<p>$3</p>', $chunk);
+       // Make line breaks.
+       $chunk = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $chunk);
+       $chunk = preg_replace('!(</?' . $block . '[^>]*>)\s*<br />!', "$1", $chunk);
+-- 
+GitLab
+
+
+From 85df460cd86fe7df43e70dbad07f118735cad72e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Mon, 25 Aug 2025 20:30:57 +0200
+Subject: [PATCH 2/8] Add unit test for FilterAutoP plugin to validate
+ paragraph handling.
+
+---
+ .../filter/tests/src/Unit/FilterAutoPTest.php | 72 +++++++++++++++++++
+ 1 file changed, 72 insertions(+)
+ create mode 100644 core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+
+diff --git a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+new file mode 100644
+index 000000000000..42909810a5a4
+--- /dev/null
++++ b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+@@ -0,0 +1,72 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Drupal\Tests\filter\Unit;
++
++use Drupal\filter\Plugin\Filter\FilterAutoP;
++use Drupal\Tests\UnitTestCase;
++
++/**
++ * @coversDefaultClass \Drupal\filter\Plugin\Filter\FilterAutoP
++ * @group filter
++ */
++class FilterAutoPTest extends UnitTestCase {
++
++  /**
++   * The filter to test.
++   *
++   * @var \Drupal\filter\Plugin\Filter\FilterAutoP
++   */
++  protected $filter;
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setUp(): void {
++    parent::setUp();
++    $this->filter = new FilterAutoP([], 'filter_autop', ['provider' => 'test']);
++  }
++
++  /**
++   * @covers ::process
++   *
++   * @dataProvider providerFilterMarkup
++   *
++   * @param string $html
++   *   Input HTML.
++   * @param string $expected
++   *   The expected output string.
++   */
++  public function testProcess($html, $expected): void {
++    $result = $this->filter->process($html, 'en');
++    $this->assertSame($expected, $result);
++  }
++
++  /**
++   * Provides data for testProcess.
++   *
++   * @return array
++   *   An array of test data.
++   */
++  public static function providerFilterMarkup(): array {
++    return [
++      [
++        'Single row.',
++        '<p>Single row.</p>'
++      ],
++      [
++        'First row of text.' . PHP_EOL . 'Second row of text.',
++        '<p>First row of text.<br />' . PHP_EOL . 'Second row of text.</p>'
++      ],
++      [
++        'First row of text.' . str_repeat(PHP_EOL, 2) . 'Second row of text.',
++        '<p>First row of text.</p>' . PHP_EOL . '<p>Second row of text.</p>'
++      ],
++      [
++        '<ul><li>First list item.</li>' . PHP_EOL . '<li>Second list item contains' . PHP_EOL . 'a single line break.' . str_repeat(PHP_EOL, 2) . 'And then double line breaks.</li></ul>',
++        '<ul><li>First list item.</li>' . PHP_EOL . '<li>Second list item contains<br />' . PHP_EOL . 'a single line break.' . PHP_EOL . '<p>And then double line breaks.</p></li></ul>'],
++    ];
++  }
++
++}
+-- 
+GitLab
+
+
+From 84d4d35d0eefd3f73a04b1e84c5286fe5d0ee40d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Tue, 26 Aug 2025 13:12:15 +0200
+Subject: [PATCH 3/8] Provide fixtures and adapt `FilterAutoPTest` to enhance
+ test coverage for `_filter_autop()` functionality.
+
+---
+ .../autop/drupal-10.filter-_filter_autop.php  | 116 ++++++++++++++++++
+ .../fixtures/autop/filter.autop-input-1.txt   |   1 +
+ .../fixtures/autop/filter.autop-input-2.txt   |   2 +
+ .../fixtures/autop/filter.autop-input-3.txt   |   3 +
+ .../fixtures/autop/filter.autop-input-4.txt   |   5 +
+ .../fixtures/autop/filter.autop-output-1.txt  |   1 +
+ .../fixtures/autop/filter.autop-output-2.txt  |   2 +
+ .../fixtures/autop/filter.autop-output-3.txt  |   2 +
+ .../fixtures/autop/filter.autop-output-4.txt  |   6 +
+ .../filter/tests/src/Unit/FilterAutoPTest.php |  22 ++--
+ 10 files changed, 151 insertions(+), 9 deletions(-)
+ create mode 100644 core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt
+ create mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt
+
+diff --git a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+new file mode 100644
+index 000000000000..47b96ab51a07
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+@@ -0,0 +1,116 @@
++<?php
++
++/**
++ * @file
++ * Provides the global function `_filter_autop()` for testing purposes.
++ */
++
++namespace  Drupal\filter\Plugin\Filter {
++
++  /**
++   * Overrides global function _filter_autop() if not exists.
++   *
++   * @see _filter_autop()
++   *
++   * @return string
++   *   The processed text.
++   */
++  if (!function_exists('_filter_autop')) {
++    function _filter_autop($text) {
++      // All block level tags.
++      $block = '(?:table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|option|form|map|area|blockquote|address|math|input|p|h[1-6]|fieldset|legend|hr|article|aside|details|figcaption|figure|footer|header|hgroup|menu|nav|section|summary)';
++
++      // Split at opening and closing PRE, SCRIPT, STYLE, OBJECT, IFRAME tags
++      // and comments. We don't apply any processing to the contents of these tags
++      // to avoid messing up code. We look for matched pairs and allow basic
++      // nesting. For example:
++      // "processed<pre>ignored<script>ignored</script>ignored</pre>processed".
++      $chunks = preg_split('@(<!--.*?-->|</?(?:pre|script|style|object|iframe|drupal-media|svg|!--)[^>]*>)@i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
++      // Note: PHP ensures the array consists of alternating delimiters and literals
++      // and begins and ends with a literal (inserting NULL as required).
++      $ignore = FALSE;
++      $ignore_tag = '';
++      $output = '';
++      foreach ($chunks as $i => $chunk) {
++        if ($i % 2) {
++          if (str_starts_with($chunk, '<!--')) {
++            // Nothing to do, this is a comment.
++            $output .= $chunk;
++            continue;
++          }
++          // Opening or closing tag?
++          $open = ($chunk[1] != '/');
++          [$tag] = preg_split('/[ >]/', substr($chunk, 2 - $open), 2);
++          if (!$ignore) {
++            if ($open) {
++              $ignore = TRUE;
++              $ignore_tag = $tag;
++            }
++          }
++          // Only allow a matching tag to close it.
++          elseif (!$open && $ignore_tag == $tag) {
++            $ignore = FALSE;
++            $ignore_tag = '';
++          }
++        }
++        elseif (!$ignore) {
++          // Skip if the next chunk starts with Twig theme debug.
++          // @see twig_render_template()
++          if (isset($chunks[$i + 1]) && $chunks[$i + 1] === '<!-- THEME DEBUG -->') {
++            $chunk = rtrim($chunk, "\n");
++            $output .= $chunk;
++            continue;
++          }
++
++          // Skip if the preceding chunk was the end of a Twig theme debug.
++          // @see twig_render_template()
++          if (isset($chunks[$i - 1])) {
++            if (
++              str_starts_with($chunks[$i - 1], '<!-- BEGIN OUTPUT from ')
++              || str_starts_with($chunks[$i - 1], '<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from ')
++            ) {
++              $chunk = ltrim($chunk, "\n");
++              $output .= $chunk;
++              continue;
++            }
++          }
++
++          // Just to make things a little easier, pad the end.
++          $chunk = preg_replace('|\n*$|', '', $chunk) . "\n\n";
++          $chunk = preg_replace('|<br />\s*<br />|', "\n\n", $chunk);
++          // Space things out a little.
++          $chunk = preg_replace('!(<' . $block . '[^>]*>)!', "\n$1", $chunk);
++          // Space things out a little.
++          $chunk = preg_replace('!(</' . $block . '>)!', "$1\n\n", $chunk);
++          // Take care of duplicates.
++          $chunk = preg_replace("/\n\n+/", "\n\n", $chunk);
++          $chunk = preg_replace('/^\n|\n\s*\n$/', '', $chunk);
++          // Make paragraphs, including one at the end.
++          $chunk = '<p>' . preg_replace('/\n\s*\n\n?(.)/', "</p>\n<p>$1", $chunk) . "</p>\n";
++          // Problem with nested lists.
++          $chunk = preg_replace("|<p>(<li.+?)</p>|", "$1", $chunk);
++          $chunk = preg_replace('|<p><blockquote([^>]*)>|i', "<blockquote$1><p>", $chunk);
++          $chunk = str_replace('</blockquote></p>', '</p></blockquote>', $chunk);
++          // Under certain strange conditions it could create a P of entirely
++          // whitespace.
++          $chunk = preg_replace('|<p>\s*</p>\n?|', '', $chunk);
++          $chunk = preg_replace('!<p>\s*(</?' . $block . '[^>]*>)!', "$1", $chunk);
++          // Do not strip a paragraph's closing tag that legitimately appears before a list item boundary.
++          // Exclude <li> from this rule to keep paragraphs inside list items well-formed.
++          $chunk = preg_replace('~(</?(?!(?:li)\b)' . $block . '[^>]*>)\s*</p>~', "$1", $chunk);
++          // Ensure paragraphs are closed before closing list items, not after them.
++          $chunk = preg_replace('!</li>\s*</p>!i', '</p></li>', $chunk);
++          // Ensure the first paragraph inside an <li> has an opening <p> if it ends with </p>.
++          $chunk = preg_replace('~<li(\b[^>]*)>(\s*)(?!<p>)((?:(?!</li>).)*?)</p>~is', '<li$1>$2<p>$3</p>', $chunk);
++          // Make line breaks.
++          $chunk = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $chunk);
++          $chunk = preg_replace('!(</?' . $block . '[^>]*>)\s*<br />!', "$1", $chunk);
++          $chunk = preg_replace('!<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)>)!', '$1', $chunk);
++          $chunk = preg_replace('/&([^#])(?![A-Za-z0-9]{1,8};)/', '&amp;$1', $chunk);
++        }
++        $output .= $chunk;
++      }
++      return $output;
++    }
++  }
++}
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt
+new file mode 100644
+index 000000000000..64a3633df60a
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt
+@@ -0,0 +1 @@
++Single row.
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt
+new file mode 100644
+index 000000000000..a0c9563dd3b0
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt
+@@ -0,0 +1,2 @@
++First row of text.
++Second row of text.
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt
+new file mode 100644
+index 000000000000..013a1f2be28c
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt
+@@ -0,0 +1,3 @@
++First row of text.
++
++Second row of text.
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt
+new file mode 100644
+index 000000000000..794f34da470a
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt
+@@ -0,0 +1,5 @@
++<ul><li>First list item.</li>
++<li>Second list item contains
++a single line break.
++
++And then double line breaks.</li></ul>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt
+new file mode 100644
+index 000000000000..a51c7a397113
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt
+@@ -0,0 +1 @@
++<p>Single row.</p>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt
+new file mode 100644
+index 000000000000..34f77c85b266
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt
+@@ -0,0 +1,2 @@
++<p>First row of text.<br />
++Second row of text.</p>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt
+new file mode 100644
+index 000000000000..0ee72db77bd0
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt
+@@ -0,0 +1,2 @@
++<p>First row of text.</p>
++<p>Second row of text.</p>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt
+new file mode 100644
+index 000000000000..d7ab3498daab
+--- /dev/null
++++ b/core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt
+@@ -0,0 +1,6 @@
++<ul>
++<li><p>First list item.</p></li>
++<li><p>Second list item contains<br />
++a single line break.</p>
++<p>And then double line breaks.</p></li>
++</ul>
+diff --git a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+index 42909810a5a4..1b891d563469 100644
+--- a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
++++ b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+@@ -26,6 +26,8 @@ class FilterAutoPTest extends UnitTestCase {
+   protected function setUp(): void {
+     parent::setUp();
+     $this->filter = new FilterAutoP([], 'filter_autop', ['provider' => 'test']);
++    $path = __DIR__ . '/../../fixtures/autop';
++    require_once($path . '/drupal-10.filter-_filter_autop.php');
+   }
+ 
+   /**
+@@ -40,7 +42,7 @@ protected function setUp(): void {
+    */
+   public function testProcess($html, $expected): void {
+     $result = $this->filter->process($html, 'en');
+-    $this->assertSame($expected, $result);
++    $this->assertSame($expected, $result->getProcessedText());
+   }
+ 
+   /**
+@@ -50,22 +52,24 @@ public function testProcess($html, $expected): void {
+    *   An array of test data.
+    */
+   public static function providerFilterMarkup(): array {
++    $path = __DIR__ . '/../../fixtures/autop';
+     return [
+       [
+-        'Single row.',
+-        '<p>Single row.</p>'
++        file_get_contents($path . '/filter.autop-input-1.txt'),
++        file_get_contents($path . '/filter.autop-output-1.txt'),
+       ],
+       [
+-        'First row of text.' . PHP_EOL . 'Second row of text.',
+-        '<p>First row of text.<br />' . PHP_EOL . 'Second row of text.</p>'
++        file_get_contents($path . '/filter.autop-input-2.txt'),
++        file_get_contents($path . '/filter.autop-output-2.txt'),
+       ],
+       [
+-        'First row of text.' . str_repeat(PHP_EOL, 2) . 'Second row of text.',
+-        '<p>First row of text.</p>' . PHP_EOL . '<p>Second row of text.</p>'
++        file_get_contents($path . '/filter.autop-input-3.txt'),
++        file_get_contents($path . '/filter.autop-output-3.txt'),
+       ],
+       [
+-        '<ul><li>First list item.</li>' . PHP_EOL . '<li>Second list item contains' . PHP_EOL . 'a single line break.' . str_repeat(PHP_EOL, 2) . 'And then double line breaks.</li></ul>',
+-        '<ul><li>First list item.</li>' . PHP_EOL . '<li>Second list item contains<br />' . PHP_EOL . 'a single line break.' . PHP_EOL . '<p>And then double line breaks.</p></li></ul>'],
++        file_get_contents($path . '/filter.autop-input-4.txt'),
++        file_get_contents($path . '/filter.autop-output-4.txt'),
++      ]
+     ];
+   }
+ 
+-- 
+GitLab
+
+
+From ebec4c4f6aa3b82962d7f4fed3481dca1ea9a22b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Tue, 26 Aug 2025 13:32:27 +0200
+Subject: [PATCH 4/8] Fix errors reported by code quality scan.
+
+---
+ .../autop/drupal-10.filter-_filter_autop.php  | 21 +++++++++++--------
+ .../filter/tests/src/Unit/FilterAutoPTest.php |  4 ++--
+ 2 files changed, 14 insertions(+), 11 deletions(-)
+
+diff --git a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+index 47b96ab51a07..0dc75513dc69 100644
+--- a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
++++ b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+@@ -5,17 +5,19 @@
+  * Provides the global function `_filter_autop()` for testing purposes.
+  */
+ 
+-namespace  Drupal\filter\Plugin\Filter {
++namespace Drupal\filter\Plugin\Filter {
+ 
+-  /**
+-   * Overrides global function _filter_autop() if not exists.
+-   *
+-   * @see _filter_autop()
+-   *
+-   * @return string
+-   *   The processed text.
+-   */
+   if (!function_exists('_filter_autop')) {
++
++    /**
++     * Overrides global function _filter_autop() if not exists.
++     *
++     * @param string $text
++     *   The text to process.
++     * @return string
++     *   The processed text.
++     * @see _filter_autop()
++     */
+     function _filter_autop($text) {
+       // All block level tags.
+       $block = '(?:table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|option|form|map|area|blockquote|address|math|input|p|h[1-6]|fieldset|legend|hr|article|aside|details|figcaption|figure|footer|header|hgroup|menu|nav|section|summary)';
+@@ -112,5 +114,6 @@ function _filter_autop($text) {
+       }
+       return $output;
+     }
++
+   }
+ }
+diff --git a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+index 1b891d563469..68ab1fa28b84 100644
+--- a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
++++ b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+@@ -27,7 +27,7 @@ protected function setUp(): void {
+     parent::setUp();
+     $this->filter = new FilterAutoP([], 'filter_autop', ['provider' => 'test']);
+     $path = __DIR__ . '/../../fixtures/autop';
+-    require_once($path . '/drupal-10.filter-_filter_autop.php');
++    require_once $path . '/drupal-10.filter-_filter_autop.php';
+   }
+ 
+   /**
+@@ -69,7 +69,7 @@ public static function providerFilterMarkup(): array {
+       [
+         file_get_contents($path . '/filter.autop-input-4.txt'),
+         file_get_contents($path . '/filter.autop-output-4.txt'),
+-      ]
++      ],
+     ];
+   }
+ 
+-- 
+GitLab
+
+
+From 7997659b0e4a2212f5b8d093dcf1bcf698706bfe Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Tue, 26 Aug 2025 13:36:04 +0200
+Subject: [PATCH 5/8] Fix docblock formatting errors.
+
+---
+ .../tests/fixtures/autop/drupal-10.filter-_filter_autop.php     | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+index 0dc75513dc69..ddf9f687ad95 100644
+--- a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
++++ b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+@@ -14,8 +14,10 @@
+      *
+      * @param string $text
+      *   The text to process.
++     *
+      * @return string
+      *   The processed text.
++     *
+      * @see _filter_autop()
+      */
+     function _filter_autop($text) {
+-- 
+GitLab
+
+
+From 1dfce1cb9d0ea8be2dff465dc2a31e72fa29e19c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Tue, 26 Aug 2025 18:07:41 +0200
+Subject: [PATCH 6/8] Replace `_filter_autop()` test fixtures and associated
+ unit test class with extra test data in FilterKernelTest.
+
+---
+ .../autop/drupal-10.filter-_filter_autop.php  | 121 ------------------
+ .../fixtures/autop/filter.autop-input-1.txt   |   1 -
+ .../fixtures/autop/filter.autop-input-2.txt   |   2 -
+ .../fixtures/autop/filter.autop-input-3.txt   |   3 -
+ .../fixtures/autop/filter.autop-input-4.txt   |   5 -
+ .../fixtures/autop/filter.autop-output-1.txt  |   1 -
+ .../fixtures/autop/filter.autop-output-2.txt  |   2 -
+ .../fixtures/autop/filter.autop-output-3.txt  |   2 -
+ .../fixtures/autop/filter.autop-output-4.txt  |   6 -
+ .../tests/src/Kernel/FilterKernelTest.php     |   4 +
+ .../filter/tests/src/Unit/FilterAutoPTest.php |  76 -----------
+ 11 files changed, 4 insertions(+), 219 deletions(-)
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt
+ delete mode 100644 core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt
+ delete mode 100644 core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+
+diff --git a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php b/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
+deleted file mode 100644
+index ddf9f687ad95..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/drupal-10.filter-_filter_autop.php
++++ /dev/null
+@@ -1,121 +0,0 @@
+-<?php
+-
+-/**
+- * @file
+- * Provides the global function `_filter_autop()` for testing purposes.
+- */
+-
+-namespace Drupal\filter\Plugin\Filter {
+-
+-  if (!function_exists('_filter_autop')) {
+-
+-    /**
+-     * Overrides global function _filter_autop() if not exists.
+-     *
+-     * @param string $text
+-     *   The text to process.
+-     *
+-     * @return string
+-     *   The processed text.
+-     *
+-     * @see _filter_autop()
+-     */
+-    function _filter_autop($text) {
+-      // All block level tags.
+-      $block = '(?:table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|option|form|map|area|blockquote|address|math|input|p|h[1-6]|fieldset|legend|hr|article|aside|details|figcaption|figure|footer|header|hgroup|menu|nav|section|summary)';
+-
+-      // Split at opening and closing PRE, SCRIPT, STYLE, OBJECT, IFRAME tags
+-      // and comments. We don't apply any processing to the contents of these tags
+-      // to avoid messing up code. We look for matched pairs and allow basic
+-      // nesting. For example:
+-      // "processed<pre>ignored<script>ignored</script>ignored</pre>processed".
+-      $chunks = preg_split('@(<!--.*?-->|</?(?:pre|script|style|object|iframe|drupal-media|svg|!--)[^>]*>)@i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+-      // Note: PHP ensures the array consists of alternating delimiters and literals
+-      // and begins and ends with a literal (inserting NULL as required).
+-      $ignore = FALSE;
+-      $ignore_tag = '';
+-      $output = '';
+-      foreach ($chunks as $i => $chunk) {
+-        if ($i % 2) {
+-          if (str_starts_with($chunk, '<!--')) {
+-            // Nothing to do, this is a comment.
+-            $output .= $chunk;
+-            continue;
+-          }
+-          // Opening or closing tag?
+-          $open = ($chunk[1] != '/');
+-          [$tag] = preg_split('/[ >]/', substr($chunk, 2 - $open), 2);
+-          if (!$ignore) {
+-            if ($open) {
+-              $ignore = TRUE;
+-              $ignore_tag = $tag;
+-            }
+-          }
+-          // Only allow a matching tag to close it.
+-          elseif (!$open && $ignore_tag == $tag) {
+-            $ignore = FALSE;
+-            $ignore_tag = '';
+-          }
+-        }
+-        elseif (!$ignore) {
+-          // Skip if the next chunk starts with Twig theme debug.
+-          // @see twig_render_template()
+-          if (isset($chunks[$i + 1]) && $chunks[$i + 1] === '<!-- THEME DEBUG -->') {
+-            $chunk = rtrim($chunk, "\n");
+-            $output .= $chunk;
+-            continue;
+-          }
+-
+-          // Skip if the preceding chunk was the end of a Twig theme debug.
+-          // @see twig_render_template()
+-          if (isset($chunks[$i - 1])) {
+-            if (
+-              str_starts_with($chunks[$i - 1], '<!-- BEGIN OUTPUT from ')
+-              || str_starts_with($chunks[$i - 1], '<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from ')
+-            ) {
+-              $chunk = ltrim($chunk, "\n");
+-              $output .= $chunk;
+-              continue;
+-            }
+-          }
+-
+-          // Just to make things a little easier, pad the end.
+-          $chunk = preg_replace('|\n*$|', '', $chunk) . "\n\n";
+-          $chunk = preg_replace('|<br />\s*<br />|', "\n\n", $chunk);
+-          // Space things out a little.
+-          $chunk = preg_replace('!(<' . $block . '[^>]*>)!', "\n$1", $chunk);
+-          // Space things out a little.
+-          $chunk = preg_replace('!(</' . $block . '>)!', "$1\n\n", $chunk);
+-          // Take care of duplicates.
+-          $chunk = preg_replace("/\n\n+/", "\n\n", $chunk);
+-          $chunk = preg_replace('/^\n|\n\s*\n$/', '', $chunk);
+-          // Make paragraphs, including one at the end.
+-          $chunk = '<p>' . preg_replace('/\n\s*\n\n?(.)/', "</p>\n<p>$1", $chunk) . "</p>\n";
+-          // Problem with nested lists.
+-          $chunk = preg_replace("|<p>(<li.+?)</p>|", "$1", $chunk);
+-          $chunk = preg_replace('|<p><blockquote([^>]*)>|i', "<blockquote$1><p>", $chunk);
+-          $chunk = str_replace('</blockquote></p>', '</p></blockquote>', $chunk);
+-          // Under certain strange conditions it could create a P of entirely
+-          // whitespace.
+-          $chunk = preg_replace('|<p>\s*</p>\n?|', '', $chunk);
+-          $chunk = preg_replace('!<p>\s*(</?' . $block . '[^>]*>)!', "$1", $chunk);
+-          // Do not strip a paragraph's closing tag that legitimately appears before a list item boundary.
+-          // Exclude <li> from this rule to keep paragraphs inside list items well-formed.
+-          $chunk = preg_replace('~(</?(?!(?:li)\b)' . $block . '[^>]*>)\s*</p>~', "$1", $chunk);
+-          // Ensure paragraphs are closed before closing list items, not after them.
+-          $chunk = preg_replace('!</li>\s*</p>!i', '</p></li>', $chunk);
+-          // Ensure the first paragraph inside an <li> has an opening <p> if it ends with </p>.
+-          $chunk = preg_replace('~<li(\b[^>]*)>(\s*)(?!<p>)((?:(?!</li>).)*?)</p>~is', '<li$1>$2<p>$3</p>', $chunk);
+-          // Make line breaks.
+-          $chunk = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $chunk);
+-          $chunk = preg_replace('!(</?' . $block . '[^>]*>)\s*<br />!', "$1", $chunk);
+-          $chunk = preg_replace('!<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)>)!', '$1', $chunk);
+-          $chunk = preg_replace('/&([^#])(?![A-Za-z0-9]{1,8};)/', '&amp;$1', $chunk);
+-        }
+-        $output .= $chunk;
+-      }
+-      return $output;
+-    }
+-
+-  }
+-}
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt
+deleted file mode 100644
+index 64a3633df60a..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-input-1.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-Single row.
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt
+deleted file mode 100644
+index a0c9563dd3b0..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-input-2.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-First row of text.
+-Second row of text.
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt
+deleted file mode 100644
+index 013a1f2be28c..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-input-3.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-First row of text.
+-
+-Second row of text.
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt
+deleted file mode 100644
+index 794f34da470a..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-input-4.txt
++++ /dev/null
+@@ -1,5 +0,0 @@
+-<ul><li>First list item.</li>
+-<li>Second list item contains
+-a single line break.
+-
+-And then double line breaks.</li></ul>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt
+deleted file mode 100644
+index a51c7a397113..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-output-1.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-<p>Single row.</p>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt
+deleted file mode 100644
+index 34f77c85b266..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-output-2.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-<p>First row of text.<br />
+-Second row of text.</p>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt
+deleted file mode 100644
+index 0ee72db77bd0..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-output-3.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-<p>First row of text.</p>
+-<p>Second row of text.</p>
+diff --git a/core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt b/core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt
+deleted file mode 100644
+index d7ab3498daab..000000000000
+--- a/core/modules/filter/tests/fixtures/autop/filter.autop-output-4.txt
++++ /dev/null
+@@ -1,6 +0,0 @@
+-<ul>
+-<li><p>First list item.</p></li>
+-<li><p>Second list item contains<br />
+-a single line break.</p>
+-<p>And then double line breaks.</p></li>
+-</ul>
+diff --git a/core/modules/filter/tests/src/Kernel/FilterKernelTest.php b/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
+index 0d789f0bce84..6971d7cc400b 100644
+--- a/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
++++ b/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
+@@ -488,6 +488,10 @@ public function testLineBreakFilter(): void {
+       '<drupal-media data-caption=" " data-entity-type="media" data-entity-uuid="dbb16f97-cd11-4357-acde-cd09e19e312b"></drupal-media>' => [
+         '<p><drupal-media data-caption=" " data-entity-type="media" data-entity-uuid="dbb16f97-cd11-4357-acde-cd09e19e312b"></drupal-media></p>' => FALSE,
+       ],
++      // Bug 3440307, double line breaks in <li> tags produced unmatched </p> tags.
++      "<ul><li>aaa\nbbb</li><li>ccc\nddd\n\neee</li></ul>" => [
++        "<ul>\n<li><p>aaa<br />\nbbb</p></li>\n<li><p>ccc<br />\nddd</p>\n<p>eee</p></li>\n</ul>" => TRUE,
++      ]
+     ];
+     // cSpell:enable
+     $this->assertFilteredString($filter, $tests);
+diff --git a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php b/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
+deleted file mode 100644
+index 68ab1fa28b84..000000000000
+--- a/core/modules/filter/tests/src/Unit/FilterAutoPTest.php
++++ /dev/null
+@@ -1,76 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace Drupal\Tests\filter\Unit;
+-
+-use Drupal\filter\Plugin\Filter\FilterAutoP;
+-use Drupal\Tests\UnitTestCase;
+-
+-/**
+- * @coversDefaultClass \Drupal\filter\Plugin\Filter\FilterAutoP
+- * @group filter
+- */
+-class FilterAutoPTest extends UnitTestCase {
+-
+-  /**
+-   * The filter to test.
+-   *
+-   * @var \Drupal\filter\Plugin\Filter\FilterAutoP
+-   */
+-  protected $filter;
+-
+-  /**
+-   * {@inheritdoc}
+-   */
+-  protected function setUp(): void {
+-    parent::setUp();
+-    $this->filter = new FilterAutoP([], 'filter_autop', ['provider' => 'test']);
+-    $path = __DIR__ . '/../../fixtures/autop';
+-    require_once $path . '/drupal-10.filter-_filter_autop.php';
+-  }
+-
+-  /**
+-   * @covers ::process
+-   *
+-   * @dataProvider providerFilterMarkup
+-   *
+-   * @param string $html
+-   *   Input HTML.
+-   * @param string $expected
+-   *   The expected output string.
+-   */
+-  public function testProcess($html, $expected): void {
+-    $result = $this->filter->process($html, 'en');
+-    $this->assertSame($expected, $result->getProcessedText());
+-  }
+-
+-  /**
+-   * Provides data for testProcess.
+-   *
+-   * @return array
+-   *   An array of test data.
+-   */
+-  public static function providerFilterMarkup(): array {
+-    $path = __DIR__ . '/../../fixtures/autop';
+-    return [
+-      [
+-        file_get_contents($path . '/filter.autop-input-1.txt'),
+-        file_get_contents($path . '/filter.autop-output-1.txt'),
+-      ],
+-      [
+-        file_get_contents($path . '/filter.autop-input-2.txt'),
+-        file_get_contents($path . '/filter.autop-output-2.txt'),
+-      ],
+-      [
+-        file_get_contents($path . '/filter.autop-input-3.txt'),
+-        file_get_contents($path . '/filter.autop-output-3.txt'),
+-      ],
+-      [
+-        file_get_contents($path . '/filter.autop-input-4.txt'),
+-        file_get_contents($path . '/filter.autop-output-4.txt'),
+-      ],
+-    ];
+-  }
+-
+-}
+-- 
+GitLab
+
+
+From 9bd75a8a1f0917998b07e0f1c76d64bdd68641a7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Peter=20T=C3=B6rnstrand?= <peter.tornstrand@happiness.se>
+Date: Tue, 26 Aug 2025 20:42:18 +0200
+Subject: [PATCH 7/8] Fix errors reported by test bot.
+
+---
+ core/modules/filter/filter.module                         | 8 +++++---
+ core/modules/filter/tests/src/Kernel/FilterKernelTest.php | 2 +-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/core/modules/filter/filter.module b/core/modules/filter/filter.module
+index 2015aea1a9e4..93224945b6d2 100644
+--- a/core/modules/filter/filter.module
++++ b/core/modules/filter/filter.module
+@@ -698,12 +698,14 @@ function _filter_autop($text) {
+       // whitespace.
+       $chunk = preg_replace('|<p>\s*</p>\n?|', '', $chunk);
+       $chunk = preg_replace('!<p>\s*(</?' . $block . '[^>]*>)!', "$1", $chunk);
+-      // Do not strip a paragraph's closing tag that legitimately appears before a list item boundary.
+-      // Exclude <li> from this rule to keep paragraphs inside list items well-formed.
++      // Do not strip a paragraph's closing tag that legitimately appears before
++      // a list item boundary. Exclude <li> from this rule to keep paragraphs
++      // inside list items well-formed.
+       $chunk = preg_replace('~(</?(?!(?:li)\b)' . $block . '[^>]*>)\s*</p>~', "$1", $chunk);
+       // Ensure paragraphs are closed before closing list items, not after them.
+       $chunk = preg_replace('!</li>\s*</p>!i', '</p></li>', $chunk);
+-      // Ensure the first paragraph inside an <li> has an opening <p> if it ends with </p>.
++      // Ensure the first paragraph inside an <li> has opening <p> if it ends
++      // with </p>.
+       $chunk = preg_replace('~<li(\b[^>]*)>(\s*)(?!<p>)((?:(?!</li>).)*?)</p>~is', '<li$1>$2<p>$3</p>', $chunk);
+       // Make line breaks.
+       $chunk = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $chunk);
+diff --git a/core/modules/filter/tests/src/Kernel/FilterKernelTest.php b/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
+index 6971d7cc400b..c1b105cfb242 100644
+--- a/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
++++ b/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
+@@ -491,7 +491,7 @@ public function testLineBreakFilter(): void {
+       // Bug 3440307, double line breaks in <li> tags produced unmatched </p> tags.
+       "<ul><li>aaa\nbbb</li><li>ccc\nddd\n\neee</li></ul>" => [
+         "<ul>\n<li><p>aaa<br />\nbbb</p></li>\n<li><p>ccc<br />\nddd</p>\n<p>eee</p></li>\n</ul>" => TRUE,
+-      ]
++      ],
+     ];
+     // cSpell:enable
+     $this->assertFilteredString($filter, $tests);
+-- 
+GitLab
+
+
+From 5c414de6911bbbafa9cb390d37278e149a12ba75 Mon Sep 17 00:00:00 2001
+From: Stephen Mustgrave <38930-smustgrave@users.noreply.drupalcode.org>
+Date: Fri, 23 Jan 2026 15:14:49 +0000
+Subject: [PATCH 8/8] Apply 1 suggestion(s) to 1 file(s)
+
+---
+ core/modules/filter/tests/src/Kernel/FilterKernelTest.php | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/modules/filter/tests/src/Kernel/FilterKernelTest.php b/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
+index c1b105cfb242..69dd657cce20 100644
+--- a/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
++++ b/core/modules/filter/tests/src/Kernel/FilterKernelTest.php
+@@ -488,7 +488,7 @@ public function testLineBreakFilter(): void {
+       '<drupal-media data-caption=" " data-entity-type="media" data-entity-uuid="dbb16f97-cd11-4357-acde-cd09e19e312b"></drupal-media>' => [
+         '<p><drupal-media data-caption=" " data-entity-type="media" data-entity-uuid="dbb16f97-cd11-4357-acde-cd09e19e312b"></drupal-media></p>' => FALSE,
+       ],
+-      // Bug 3440307, double line breaks in <li> tags produced unmatched </p> tags.
++      // Double line breaks in <li> tags produced unmatched </p> tags.
+       "<ul><li>aaa\nbbb</li><li>ccc\nddd\n\neee</li></ul>" => [
+         "<ul>\n<li><p>aaa<br />\nbbb</p></li>\n<li><p>ccc<br />\nddd</p>\n<p>eee</p></li>\n</ul>" => TRUE,
+       ],
+-- 
+GitLab
+
